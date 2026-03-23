@@ -1080,7 +1080,6 @@ Write a concise 3-sentence strategic summary: (1) What ${firmName} does better t
             )}
           </div>
         )}
-        )}
       </div>
     </div>
   );
