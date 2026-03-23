@@ -634,6 +634,25 @@ Write a concise 3-sentence strategic summary: (1) What ${firmName} does better t
 
       {/* HEADER */}
       <div style={{background:C.navy,padding:"20px 28px 0",color:C.warmWhite}}>
+     <div style={{maxWidth:1020,margin:"0 auto"}}>
+          <button
+            onClick={onBack}
+            style={{
+              background: "none",
+              border: "none",
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: 13,
+              color: "#b68d40",
+              cursor: "pointer",
+              marginBottom: 16,
+              padding: "0",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            ← Home
+          </button>
         <div style={{maxWidth:1020,margin:"0 auto"}}>
           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
             <div>
