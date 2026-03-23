@@ -499,9 +499,34 @@ const SummaryPage = ({ competitors, onSelectFirm }) => {
 
 // ─── MAIN — SHELL-COMPATIBLE ──────────────────────────────────────────
 // Props: competitors (obj), selectedFirm (name string), onBack (fn), onUpdate(firmName, ceData) (fn)
-export default function ContentEngine({ competitors = {}, selectedFirm: selectedFirmName, onBack, onUpdate }) {
+export default function ContentEngine({ competitors, onBack }) {
+  const firmsWithCE = Object.keys(competitors || {}).filter(k => competitors[k]?.contentEngine);
+  const [selectedFirmName, setSelectedFirmName] = useState(firmsWithCE[0] || null);
   const [view, setView] = useState(selectedFirmName ? "audit" : "summary");
   const [activeTab, setActiveTab] = useState("content");
+
+  const onUpdate = async (firmName, ceData) => {
+    if (firmName === "__selectFirm__") {
+      setSelectedFirmName(ceData);
+      return;
+    }
+    
+    const firm = competitors[firmName];
+    if (!firm) return;
+    
+    const updated = { ...firm, contentEngine: ceData };
+    
+    try {
+      await fetch('/api/save-competitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+      window.location.reload();
+    } catch (err) {
+      console.error('Save failed:', err);
+    }
+  };
 
   const currentFirmMeta = selectedFirmName ? competitors[selectedFirmName] : null;
   const ce = currentFirmMeta?.contentEngine || emptyContentEngine();
