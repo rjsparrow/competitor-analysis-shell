@@ -409,26 +409,59 @@ export default function CompetitorScorecard({ competitors, onBack }) {
   const gfd = useCallback(f=>data[f]||{scores:{},notes:{}},[data]);
   const mkmData = gfd(MKM);
 
-  const updateScore = (f,c,v) => {
-    const next={...data,[f]:{...gfd(f),scores:{...gfd(f).scores,[c]:v}}};
-    setData(next); persist(SK.scores,Object.fromEntries(Object.entries(next).map(([k,val])=>([k,{scores:val.scores,notes:val.notes}]))));
+ const updateScore = async (firmName, catId, value) => {
+  const firmKey = Object.keys(competitors).find(k => competitors[k].name === firmName);
+  if (!firmKey) return;
+  
+  const firm = competitors[firmKey];
+  const scorecard = firm.scorecard || { scores: {}, notes: {} };
+  
+  const updated = {
+    ...firm,
+    scorecard: {
+      ...scorecard,
+      scores: { ...scorecard.scores, [catId]: value }
+    }
   };
-  const updateNotes = (f,c,v) => {
-    const next={...data,[f]:{...gfd(f),notes:{...gfd(f).notes,[c]:v}}};
-    setData(next); persist(SK.scores,Object.fromEntries(Object.entries(next).map(([k,val])=>([k,{scores:val.scores,notes:val.notes}]))));
+  
+  try {
+    await fetch('/api/save-competitor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated)
+    });
+    window.location.reload();
+  } catch (err) {
+    console.error('Save failed:', err);
+  }
+};
+
+const updateNotes = async (firmName, catId, value) => {
+  const firmKey = Object.keys(competitors).find(k => competitors[k].name === firmName);
+  if (!firmKey) return;
+  
+  const firm = competitors[firmKey];
+  const scorecard = firm.scorecard || { scores: {}, notes: {} };
+  
+  const updated = {
+    ...firm,
+    scorecard: {
+      ...scorecard,
+      notes: { ...scorecard.notes, [catId]: value }
+    }
   };
-  const updateSwot = (f,l,v) => {
-    const next={...swotText,[f]:{...(swotText[f]||{}),[l]:v}};
-    setSwotText(next); persist(SK.swot,next);
-  };
-  const updateWritten = (f,id,v) => {
-    const next={...writtenObs,[f]:{...(writtenObs[f]||{}),[id]:v}};
-    setWrittenObs(next); persist(SK.written,next);
-  };
-  const updateImpression = (f,v) => {
-    const next={...impressions,[f]:v};
-    setImpressions(next); persist(SK.impressions,next);
-  };
+  
+  try {
+    await fetch('/api/save-competitor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated)
+    });
+    window.location.reload();
+  } catch (err) {
+    console.error('Save failed:', err);
+  }
+};
   const toggleStar = f => {
     const next={...starred,[f]:!starred[f]};
     setStarred(next); persist(SK.starred,next);
