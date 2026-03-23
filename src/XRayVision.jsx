@@ -537,7 +537,7 @@ export default function XRayVision({ competitors, onBack }) {
     {/* ═══ HEADER ═══ */}
     <div style={{background:"#2c2c2c",padding:"32px 32px 28px",color:"#f5f2ed"}}>
       <div style={{maxWidth:1100,margin:"0 auto"}}>
-        
+
         {/* ADD HOME BUTTON HERE ↓ */}
       <button
         onClick={onBack}
