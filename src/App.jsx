@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import XRayVision from "./XRayVision";
+import ContentEngine from "./ContentEngine";
 
 export default function CompetitorAnalysisShell() {
   const [view, setView] = useState("home");
@@ -634,11 +636,67 @@ function ImportPage({ onImport, onBack, showSuccess, onCloseSuccess, onAddAnothe
 // ============================================================================
 
 function ToolView({ view, competitors, onBack }) {
+  // Render X-Ray Vision component for xray view
+  if (view === "xray") {
+    return <XRayVision competitors={competitors} onBack={onBack} />;
+  }
+
+  // Render Content Engine for content view
+  if (view === "content") {
+    return <ContentEngine competitors={competitors} onBack={onBack} />;
+  }
+
+  // Placeholder for Scorecard
   const titles = {
     scorecard: "Competitor Scorecard",
-    xray: "Website X-Ray Vision",
-    content: "Content Engine",
   };
+
+  return (
+    <div style={{ minHeight: "100vh", padding: "48px" }}>
+      <button
+        onClick={onBack}
+        style={{
+          background: "none",
+          border: "none",
+          color: "#5c6d5e",
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: 14,
+          cursor: "pointer",
+          marginBottom: 32,
+          padding: "8px 0",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        ← Home
+      </button>
+
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <h1
+          style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: 36,
+            fontWeight: 600,
+            marginBottom: 32,
+            color: "#1a1a1a",
+          }}
+        >
+          {titles[view]}
+        </h1>
+
+        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e8e4df", padding: 32 }}>
+          <p style={{ fontSize: 14, color: "#8a8278", marginBottom: 16 }}>
+            The full Scorecard app will render here with access to all competitor data.
+          </p>
+          <p style={{ fontSize: 13, color: "#8a8278", fontStyle: "italic" }}>
+            ({Object.keys(competitors).length} competitors loaded)
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
   return (
     <div style={{ minHeight: "100vh", padding: "48px" }}>
