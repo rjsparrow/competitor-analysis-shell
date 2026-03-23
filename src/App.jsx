@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import XRayVision from "./XRayVision";
 import ContentEngine from "./ContentEngine";
+import CompetitorScorecard from "./CompetitorScorecard";
 
 export default function CompetitorAnalysisShell() {
   const [view, setView] = useState("home");
@@ -640,10 +641,13 @@ function ToolView({ view, competitors, onBack }) {
   if (view === "xray") {
     return <XRayVision competitors={competitors} onBack={onBack} />;
   }
-
   // Render Content Engine for content view
   if (view === "content") {
     return <ContentEngine competitors={competitors} onBack={onBack} />;
+  }
+  // Render Competitor Scorecard for scorecard view
+  if (view === "scorecard") {
+    return <CompetitorScorecard competitors={competitors} onBack={onBack} />;
   }
 
   // Placeholder for Scorecard
