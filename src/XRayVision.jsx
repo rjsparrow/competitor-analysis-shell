@@ -5,7 +5,7 @@ const A = "#5c6d5e", AW = "#b68d40", BG = "#e8e4dd", C = "#fff", BD = "#e8e4df",
 const s = (x={}) => ({fontFamily:"'DM Sans',sans-serif",...x});
 const m = (x={}) => ({fontFamily:"'DM Mono',monospace",...x});
 
-// ─── CHIP OPTIONS ────────────────────────────────────────────────────
+// ─── CHIP OPTIONS ───────────────────────────────────────────────────
 const PEER_GROUPS = ["Healthcare (Large)","Healthcare (Small)","Senior Living","Peer Group"];
 const STATUS_OPTIONS = ["Not Started","In Progress","Complete"];
 const NAV_STYLES = ["Simple Dropdown","Mega Menu","Hamburger Only","Sticky Nav","Sidebar Nav","Hybrid"];
@@ -431,6 +431,8 @@ const TABS = [
 export default function XRayVision({ competitors, onBack }) {
   const firms = competitors || {};
   const order = Object.keys(firms).sort((a,b) => firms[a].name.localeCompare(firms[b].name));
+  const [firms, setFirms] = useState({});
+  const [order, setOrder] = useState([]);
   const [sel,setSel] = useState(null);
   const [tab,setTab] = useState(null); // null = landing view
   const [view,setView] = useState("audit"); // audit|matrix|ab|import
