@@ -11,26 +11,30 @@ export default function CompetitorAnalysisShell() {
 
   const loadCompetitors = async () => {
     try {
-      const keys = await window.storage.list("competitor:");
-      const loaded = {};
-      for (const key of keys.keys) {
-        const result = await window.storage.get(key);
-        if (result) {
-          const data = JSON.parse(result.value);
-          loaded[data.name] = data;
-        }
-      }
-      setCompetitors(loaded);
+      const response = await fetch('/api/competitors');
+      const data = await response.json();
+      setCompetitors(data);
     } catch (err) {
       console.log("No existing competitors found");
     }
   };
 
   const handleImport = async (firmData) => {
-    const key = `competitor:${firmData.name.toLowerCase().replace(/\s+/g, "-")}`;
-    await window.storage.set(key, JSON.stringify(firmData));
-    await loadCompetitors();
-    setShowSuccess(true);
+    try {
+      const response = await fetch('/api/save-competitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(firmData)
+      });
+      
+      if (!response.ok) throw new Error('Failed to save');
+      
+      await loadCompetitors();
+      setShowSuccess(true);
+    } catch (err) {
+      console.error('Import error:', err);
+      alert('Failed to save competitor data. Please try again.');
+    }
   };
 
   const firmList = Object.values(competitors).sort((a, b) => a.name.localeCompare(b.name));
@@ -250,10 +254,10 @@ function ImportPage({ onImport, onBack, showSuccess, onCloseSuccess, onAddAnothe
   };
 
   const checkDuplicate = async (firmName) => {
-    const key = `competitor:${firmName.toLowerCase().replace(/\s+/g, "-")}`;
     try {
-      const result = await window.storage.get(key);
-      return result !== null;
+      const response = await fetch(`/api/check-competitor?name=${encodeURIComponent(firmName)}`);
+      const data = await response.json();
+      return data.exists;
     } catch {
       return false;
     }
@@ -261,9 +265,15 @@ function ImportPage({ onImport, onBack, showSuccess, onCloseSuccess, onAddAnothe
 
   const handleSubmit = async () => {
     try {
+      console.log('Form data name:', formData.name);
+      console.log('Form data JSON:', formData.jsonData);
+      
       const parsed = JSON.parse(formData.jsonData);
+      console.log('Parsed successfully:', parsed);
       
       const isDuplicate = await checkDuplicate(formData.name);
+      console.log('Duplicate check result:', isDuplicate);
+      
       if (isDuplicate) {
         setExistingFirm(formData.name);
         setShowDuplicateWarning(true);
@@ -272,6 +282,7 @@ function ImportPage({ onImport, onBack, showSuccess, onCloseSuccess, onAddAnothe
 
       await performImport(parsed);
     } catch (err) {
+      console.error('Error details:', err);
       alert("Invalid JSON format. Please check your data and try again.");
     }
   };
