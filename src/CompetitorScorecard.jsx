@@ -265,13 +265,14 @@ const QuickFacts = ({facts,url}) => {
 };
 
 /* ── MAIN APP ── */
-export default function App() {
-  const [groups,setGroups] = useState(DEFAULT_GROUPS);
-  const [data,setData] = useState(()=>{
-    const d={};
-    Object.entries(INIT_DATA).forEach(([k,v])=>{d[k]={scores:{...v.scores},notes:{...v.notes}};});
-    DEFAULT_GROUPS.flatMap(g=>g.firms).forEach(f=>{if(!d[f])d[f]={scores:{},notes:{}};});
-    return d;
+export default function CompetitorScorecard({ competitors, onBack }) {
+  // Get scorecard data from competitors prop
+  const data = {};
+  Object.keys(competitors || {}).forEach(key => {
+    const firm = competitors[key];
+    if (firm.scorecard) {
+      data[firm.name] = firm.scorecard;
+    }
   });
   const [swotText,setSwotText] = useState(()=>{const s={};Object.entries(INIT_DATA).forEach(([k,v])=>{s[k]={...v.swot};});return s;});
   const [writtenObs,setWrittenObs] = useState(()=>{const w={};Object.entries(INIT_DATA).forEach(([k,v])=>{w[k]={...v.written};});return w;});
