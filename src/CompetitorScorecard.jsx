@@ -199,13 +199,15 @@ const getColor = (avg) => {
 const ACCENT = "#5c6d5e";
 const ACCENT_WARM = "#b68d40";
 
-export default function CompetitorScorecard() {
+export default function CompetitorScorecard({ competitors, onBack } = {}) {
   const [data, setData] = useState({});
   const [selectedFirm, setSelectedFirm] = useState(null);
   const [view, setView] = useState("score"); // "score" | "compare"
   const [search, setSearch] = useState("");
   const [swotText, setSwotText] = useState({});
 
+  // Sync competitors prop into data state
+  useEffect(() => { if (competitors) setData(competitors); }, [competitors]);
   const getFirmData = useCallback(
     (firm) => {
       return (
@@ -258,6 +260,9 @@ export default function CompetitorScorecard() {
         color: "#1a1a1a",
       }}
     >
+      {onBack && (
+        <button onClick={onBack} style={{padding:'4px 12px',marginBottom:'10px',background:'none',border:'1px solid #ccc',borderRadius:'4px',cursor:'pointer',fontSize:'13px',color:'#555'}}>← Home</button>
+      )}
       <link
         href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap"
         rel="stylesheet"
