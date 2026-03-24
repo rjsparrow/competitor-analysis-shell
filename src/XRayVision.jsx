@@ -463,6 +463,9 @@ export default function XRayVision({ competitors, onBack }) {
   useEffect(()=>{ if(loaded) sSet(SK,firms); },[firms,loaded]);
   useEffect(()=>{ if(loaded) sSet(SO,order); },[order,loaded]);
 
+  // Auto-select first firm when competitors load
+  useEffect(()=>{ if(!sel && order.length>0) setSel(order[0]); },[order.length]);
+
   const updateFirm = useCallback((key,value)=>{
     if(!sel) return;
     const now = new Date().toISOString().split("T")[0];
@@ -530,7 +533,7 @@ export default function XRayVision({ competitors, onBack }) {
   const curImgs = sel?(images[sel]||{}):{};
   const grouped = {};
   PEER_GROUPS.forEach(g=>{grouped[g]=[];});
-  order.forEach(id=>{const f=firms[id];if(f){const g=f.peerGroup||"Peer Group";if(!grouped[g])grouped[g]=[];grouped[g].push(f);}});
+  order.forEach(id=>{const f=firms[id];if(f){const g=f.peerGroup||"Peer Group";if(!grouped[g])grouped[g]=[];grouped[g].push({...f, id});}});
   const statusColor = s => s==="Complete"?A:s==="In Progress"?AW:M;
 
   if(!loaded) return <div style={{...s(),background:BG,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:M}}>Loading...</div>;
