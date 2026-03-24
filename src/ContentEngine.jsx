@@ -209,7 +209,8 @@ const HighlightsSection = ({ highlights=[], onChange }) => {
 
 // ─── TAB: CONTENT & PUBLISHING ───────────────────────────────────────
 const TabContent = ({ firm, onChange }) => {
-  const c = firm.content || {};
+  const _ec = emptyContentEngine();
+  const c = { ..._ec.content, ...(firm.content || {}) };
   const uc = (f,v) => onChange({ ...firm, content: { ...c, [f]: v } });
   const ucTL = (f,v) => onChange({ ...firm, content: { ...c, thoughtLeadership: { ...c.thoughtLeadership, [f]: v } } });
   const ucSEO = (f,v) => onChange({ ...firm, content: { ...c, contentSEO: { ...c.contentSEO, [f]: v } } });
