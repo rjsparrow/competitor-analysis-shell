@@ -266,16 +266,10 @@ function ImportPage({ onImport, onBack, showSuccess, onCloseSuccess, onAddAnothe
     }
   };
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
     try {
-      console.log('Form data name:', formData.name);
-      console.log('Form data JSON:', formData.jsonData);
-      
       const parsed = JSON.parse(formData.jsonData);
-      console.log('Parsed successfully:', parsed);
-      
       const isDuplicate = await checkDuplicate(formData.name);
-      console.log('Duplicate check result:', isDuplicate);
       
       if (isDuplicate) {
         setExistingFirm(formData.name);
@@ -291,16 +285,36 @@ function ImportPage({ onImport, onBack, showSuccess, onCloseSuccess, onAddAnothe
   };
 
   const performImport = async (parsed) => {
+    // 1. Extract sub-objects from the pasted JSON
+    const scorecardData = parsed.scorecard || {};
+    const xrayData = parsed.xray || {};
+    const contentData = parsed.contentEngine || {};
+
+    // 2. Build the data structure
     const firmData = {
-      name: formData.name,
-      peerGroup: parsed.peerGroup || parsed.scorecard?.peerGroup || parsed.xray?.peerGroup || "Unknown",
-      scorecard: parsed.scorecard || {},
-      xray: parsed.xray || {},
-      contentEngine: parsed.contentEngine || {},
-      images: formData.images,
+      // We put X-Ray data at the top level so XRayVision.jsx can find it easily
+      ...xrayData, 
+      
+      name: formData.name || parsed.name,
+      peerGroup: formData.peerGroup || parsed.peerGroup || scorecardData.peerGroup || xrayData.peerGroup || "Peer Group",
+      
+      // Keep Scorecard and Content Engine in their folders
+      scorecard: {
+        scores: scorecardData.scores || {},
+        notes: scorecardData.notes || {}
+      },
+      contentEngine: contentData,
+      
+      // Merge images from JSON and the file upload inputs
+      images: {
+        ...(parsed.images || {}),
+        ...formData.images
+      },
       importedAt: new Date().toISOString(),
     };
+
     await onImport(firmData);
+    
     setFormData({
       name: "",
       jsonData: "",
