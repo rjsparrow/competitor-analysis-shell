@@ -183,6 +183,7 @@ const CategoryRow = ({ category, score, notes, onScoreChange, onNotesChange, acc
 };
 
 const getAvg = (scores) => {
+  if (!scores) return 0;
   const vals = Object.values(scores).filter((v) => v > 0);
   if (vals.length === 0) return 0;
   return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
