@@ -123,8 +123,8 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
     }
   }, [competitors]);
 
-  const getFirmData = useCallback((firmName) => {
-    // Look inside the .scorecard sub-object we created in App.jsx
+const getFirmData = useCallback((firmName) => {
+    // This line is key: it goes deep into the .scorecard sub-object
     return localData?.[firmName]?.scorecard || { scores: {}, notes: {} };
   }, [localData]);
 
