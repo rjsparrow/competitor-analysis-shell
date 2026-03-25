@@ -519,19 +519,20 @@ export default function ContentEngine({ competitors, onBack }) {
     const updated = { ...firm, name: firmName, contentEngine: ceData };
     
     try {
-      await fetch('/api/save-competitor', {
+      const response = await fetch('/api/save-competitor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
       });
-      // We reload to ensure the 'competitors' prop from the parent App.jsx refreshes
-      window.location.reload();
+      if (response.ok) {
+        window.location.reload(); // Refresh to sync parent data
+      }
     } catch (err) {
       console.error('Save failed:', err);
     }
   };
 
-  // 3. Selection Helpers
+  // 3. Helpers for selection
   const handleSelectFirm = (name) => {
     setSelectedFirmName(name);
     setView("audit");
@@ -562,7 +563,7 @@ export default function ContentEngine({ competitors, onBack }) {
     <div style={{ ...sans(), background: BG, minHeight: "100vh", color: DARK, position: "relative" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-      {/* --- SLIDE-OVER TRAY NAVIGATION --- */}
+      {/* --- FLOATING GOLD TRAY BUTTON --- */}
       {!trayOpen && (
         <button
           onClick={() => setTrayOpen(true)}
@@ -577,12 +578,13 @@ export default function ContentEngine({ competitors, onBack }) {
         </button>
       )}
 
+      {/* --- SIDEBAR OVERLAY --- */}
       {trayOpen && (
         <>
           <div onClick={() => setTrayOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 200 }} />
           <div style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 280, background: "#fff", zIndex: 201, boxShadow: "4px 0 24px rgba(0,0,0,0.15)", overflowY: "auto", padding: "24px 20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>Firms</div>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>Competitors</div>
               <button onClick={() => setTrayOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: MUTED }}>×</button>
             </div>
             <input 
