@@ -242,16 +242,14 @@ export default function CompetitorScorecard({ competitors, onBack } = {}) {
     }));
   };
 
-  const scoredFirms = ALL_FIRMS.filter((f) => {
-    const d = getFirmData(f);
-    return Object.values(d.scores).some((v) => v > 0);
-  }).sort((a, b) => {
-    return parseFloat(getAvg(getFirmData(b).scores)) - parseFloat(getAvg(getFirmData(a).scores));
-  });
-
-  const filteredFirms = ALL_FIRMS.filter((f) =>
-    f.toLowerCase().includes(search.toLowerCase())
-  );
+const scoredFirms = (ALL_FIRMS || []).filter((f) => {
+  const d = getFirmData(f);
+  return d && d.scores && Object.values(d.scores).some((v) => v > 0);
+}).sort((a, b) => {
+  const scoreA = parseFloat(getAvg(getFirmData(a).scores)) || 0;
+  const scoreB = parseFloat(getAvg(getFirmData(b).scores)) || 0;
+  return scoreB - scoreA;
+});
 
   return (
     <div
