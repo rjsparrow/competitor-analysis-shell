@@ -127,22 +127,57 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
     return localData?.[firmName] || { scores: {}, notes: {} };
   }, [localData]);
 
-  const updateScore = (firm, catId, value) => {
+  const updateScore = async (firm, catId, value) => {
     const current = getFirmData(firm);
+    const updatedFirm = { 
+      ...current, 
+      name: firm, // ensure name is present
+      scores: { ...current.scores, [catId]: value } 
+    };
+
+    // Update local screen immediately
     setLocalData(prev => ({
       ...prev,
-      [firm]: { ...current, scores: { ...current.scores, [catId]: value } }
+      [firm]: updatedFirm
     }));
+
+    // Save to Redis via your API
+    try {
+      await fetch('/api/save-competitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFirm)
+      });
+    } catch (err) {
+      console.error('Failed to save score:', err);
+    }
   };
 
-  const updateNotes = (firm, catId, value) => {
+  const updateNotes = async (firm, catId, value) => {
     const current = getFirmData(firm);
+    const updatedFirm = { 
+      ...current, 
+      name: firm, 
+      notes: { ...current.notes, [catId]: value } 
+    };
+
+    // Update local screen
     setLocalData(prev => ({
       ...prev,
-      [firm]: { ...current, notes: { ...current.notes, [catId]: value } }
+      [firm]: updatedFirm
     }));
-  };
 
+    // Save to Redis
+    try {
+      await fetch('/api/save-competitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFirm)
+      });
+    } catch (err) {
+      console.error('Failed to save note:', err);
+    }
+  };
   const scoredFirms = (ALL_FIRMS || []).filter((f) => {
     const d = getFirmData(f);
     return d?.scores && Object.values(d.scores).some(v => v > 0);
