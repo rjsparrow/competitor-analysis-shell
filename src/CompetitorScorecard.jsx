@@ -209,17 +209,18 @@ export default function CompetitorScorecard({ competitors, onBack } = {}) {
 
   // Sync competitors prop into data state
   useEffect(() => { if (competitors) setData(competitors); }, [competitors]);
-  const getFirmData = useCallback(
-    (firm) => {
-      return (
-        data[firm] || {
-          scores: {},
-          notes: {},
-        }
-      );
-    },
-    [data]
-  );
+ const getFirmData = useCallback(
+  (firm) => {
+    if (!data || !data[firm]) {
+      return {
+        scores: {},
+        notes: {},
+      };
+    }
+    return data[firm];
+  },
+  [data]
+);
 
   const updateScore = (firm, catId, value) => {
     setData((prev) => ({
