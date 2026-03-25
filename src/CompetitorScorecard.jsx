@@ -124,7 +124,8 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
   }, [competitors]);
 
   const getFirmData = useCallback((firmName) => {
-    return localData?.[firmName] || { scores: {}, notes: {} };
+    // Look inside the .scorecard sub-object we created in App.jsx
+    return localData?.[firmName]?.scorecard || { scores: {}, notes: {} };
   }, [localData]);
 
   const updateScore = async (firm, catId, value) => {
