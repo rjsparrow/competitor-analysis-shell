@@ -284,28 +284,39 @@ const handleSubmit = async () => {
     }
   };
 
-  const performImport = async (parsed) => {
-    // 1. Extract sub-objects from the pasted JSON
-    const scorecardData = parsed.scorecard || {};
-    const xrayData = parsed.xray || {};
-    const contentData = parsed.contentEngine || {};
+const performImport = async (parsed) => {
+    // 1. Smart Root Selection: Handle both nested and flat JSON
+    const scorecardRoot = parsed.scorecard || parsed;
+    const xrayRoot = parsed.xray || parsed;
+    const contentRoot = parsed.contentEngine || parsed;
 
-    // 2. Build the data structure
+    // 2. Intelligent Score Mapping: Look for keys even if AI changed the names
+    const extractedScores = scorecardRoot.scores || {
+      brand_pos: scorecardRoot.brand_pos || scorecardRoot.brand || scorecardRoot.positioning || 0,
+      market: scorecardRoot.market || scorecardRoot.market_focus || 0,
+      portfolio: scorecardRoot.portfolio || scorecardRoot.project_portfolio || 0,
+      thought: scorecardRoot.thought || scorecardRoot.thought_leadership || 0,
+      services: scorecardRoot.services || scorecardRoot.service_presentation || 0,
+      team: scorecardRoot.team || scorecardRoot.team_presentation || 0,
+      ux: scorecardRoot.ux || scorecardRoot.website_ux || 0,
+      digital: scorecardRoot.digital || scorecardRoot.digital_presence || 0,
+      tone: scorecardRoot.tone || scorecardRoot.tone_voice || 0,
+      cta: scorecardRoot.cta || scorecardRoot.calls_to_action || 0
+    };
+
+    // 3. Build final unified object
     const firmData = {
-      // We put X-Ray data at the top level so XRayVision.jsx can find it easily
-      ...xrayData, 
-      
-      name: formData.name || parsed.name,
-      peerGroup: formData.peerGroup || parsed.peerGroup || scorecardData.peerGroup || xrayData.peerGroup || "Peer Group",
-      
-      // Keep Scorecard and Content Engine in their folders
+      ...xrayRoot, // Spread X-Ray details to top level
+      name: formData.name || parsed.name || "Unknown Firm",
+      peerGroup: formData.peerGroup || parsed.peerGroup || scorecardRoot.peerGroup || "Peer Group",
       scorecard: {
-        scores: scorecardData.scores || {},
-        notes: scorecardData.notes || {}
+        scores: extractedScores,
+        notes: scorecardRoot.notes || {}
       },
-      contentEngine: contentData,
-      
-      // Merge images from JSON and the file upload inputs
+      contentEngine: {
+        keyTakeaway: contentRoot.keyTakeaway || parsed.keyTakeaway || "",
+        ...contentRoot
+      },
       images: {
         ...(parsed.images || {}),
         ...formData.images
