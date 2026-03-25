@@ -1,5 +1,8 @@
 import { useState } from "react";
 
+
+const PEER_GROUPS = ["Healthcare (Large)", "Healthcare (Small)", "Senior Living", "Peer Group"];
+
 // ─── THEME ──────────────────────────────────────────────────────────
 const ACCENT = "#1B2A4A";
 const ACCENT_WARM = "#b68d40";
@@ -499,23 +502,21 @@ const SummaryPage = ({ competitors, onSelectFirm }) => {
 };
 
 // ─── MAIN — SHELL-COMPATIBLE ──────────────────────────────────────────
-// Props: competitors (obj), selectedFirm (name string), onBack (fn), onUpdate(firmName, ceData) (fn)
+// Main Component
 export default function ContentEngine({ competitors, onBack }) {
-  const firmsWithCE = Object.keys(competitors || {}).filter(k => competitors[k]?.contentEngine);
-  const [selectedFirmName, setSelectedFirmName] = useState(firmsWithCE[0] || null);
-  const [view, setView] = useState(selectedFirmName ? "audit" : "summary");
+  // 1. Navigation and Sidebar States
+  const [selectedFirmName, setSelectedFirmName] = useState(null);
+  const [view, setView] = useState("summary");
   const [activeTab, setActiveTab] = useState("content");
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
+  // 2. Database Save Function
   const onUpdate = async (firmName, ceData) => {
-    if (firmName === "__selectFirm__") {
-      setSelectedFirmName(ceData);
-      return;
-    }
-    
     const firm = competitors[firmName];
     if (!firm) return;
     
-    const updated = { ...firm, contentEngine: ceData };
+    const updated = { ...firm, name: firmName, contentEngine: ceData };
     
     try {
       await fetch('/api/save-competitor', {
@@ -523,10 +524,18 @@ export default function ContentEngine({ competitors, onBack }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
       });
+      // We reload to ensure the 'competitors' prop from the parent App.jsx refreshes
       window.location.reload();
     } catch (err) {
       console.error('Save failed:', err);
     }
+  };
+
+  // 3. Selection Helpers
+  const handleSelectFirm = (name) => {
+    setSelectedFirmName(name);
+    setView("audit");
+    setTrayOpen(false);
   };
 
   const currentFirmMeta = selectedFirmName ? competitors[selectedFirmName] : null;
@@ -534,21 +543,83 @@ export default function ContentEngine({ competitors, onBack }) {
   const firmForTabs = selectedFirmName ? { name: selectedFirmName, ...ce } : null;
 
   const handleChange = (updated) => {
-    if (!selectedFirmName || !onUpdate) return;
+    if (!selectedFirmName) return;
     const { name, ...ceData } = updated;
     onUpdate(selectedFirmName, ceData);
   };
 
-  const handleSelectFromSummary = (firmName) => {
-    if (onUpdate) onUpdate("__selectFirm__", firmName);
-    setView("audit");
-  };
+  // 4. Sidebar Grouping Logic
+  const grouped = {};
+  PEER_GROUPS.forEach(g => { grouped[g] = []; });
+  Object.keys(competitors || {}).forEach(name => {
+    const f = competitors[name];
+    const g = f.peerGroup || "Peer Group";
+    if (!grouped[g]) grouped[g] = [];
+    grouped[g].push({ name: f.name });
+  });
 
   return (
-    <div style={{ ...sans(), background: BG, minHeight: "100vh", color: DARK }}>
+    <div style={{ ...sans(), background: BG, minHeight: "100vh", color: DARK, position: "relative" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-      {/* HEADER */}
+      {/* --- SLIDE-OVER TRAY NAVIGATION --- */}
+      {!trayOpen && (
+        <button
+          onClick={() => setTrayOpen(true)}
+          style={{
+            position: "fixed", left: 0, top: "50%", transform: "translateY(-50%)", zIndex: 100,
+            background: ACCENT_WARM, color: "#fff", border: "none", borderRadius: "0 8px 8px 0",
+            padding: "12px 8px", cursor: "pointer", writingMode: "vertical-lr",
+            fontSize: 12, fontWeight: 600, letterSpacing: 0.5, boxShadow: "2px 2px 12px rgba(0,0,0,0.15)"
+          }}
+        >
+          {selectedFirmName || "Select Firm"} ▸
+        </button>
+      )}
+
+      {trayOpen && (
+        <>
+          <div onClick={() => setTrayOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 200 }} />
+          <div style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 280, background: "#fff", zIndex: 201, boxShadow: "4px 0 24px rgba(0,0,0,0.15)", overflowY: "auto", padding: "24px 20px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>Firms</div>
+              <button onClick={() => setTrayOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: MUTED }}>×</button>
+            </div>
+            <input 
+              type="text" 
+              placeholder="Search..." 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              style={{ ...inputStyle, marginBottom: 16 }}
+            />
+            {PEER_GROUPS.map(group => {
+              const inGroup = (grouped[group] || []).filter(f => !search || f.name.toLowerCase().includes(search.toLowerCase()));
+              if (!inGroup.length) return null;
+              return (
+                <div key={group} style={{ marginBottom: 16 }}>
+                  <div style={{ ...mono(), fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, marginBottom: 6, paddingLeft: 4 }}>{group}</div>
+                  {inGroup.map(f => (
+                    <button 
+                      key={f.name} 
+                      onClick={() => handleSelectFirm(f.name)} 
+                      style={{
+                        display: "flex", alignItems: "center", width: "100%", padding: "8px 10px", border: "none", borderRadius: 6,
+                        background: selectedFirmName === f.name ? ACCENT_WARM : "transparent",
+                        color: selectedFirmName === f.name ? "#fff" : DARK,
+                        fontSize: 13, cursor: "pointer", textAlign: "left", marginBottom: 2
+                      }}
+                    >
+                      {f.name}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* --- HEADER --- */}
       <div style={{ background: "#2c2c2c", padding: "32px 32px 28px", color: "#f5f2ed" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", color: ACCENT_WARM, ...sans(), fontSize:13, fontWeight:600, marginBottom:16, padding:0, display:"flex", alignItems:"center", gap:6 }}>
@@ -568,15 +639,14 @@ export default function ContentEngine({ competitors, onBack }) {
       </div>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 32px 64px" }}>
-
-        {view === "summary" && <SummaryPage competitors={competitors} onSelectFirm={handleSelectFromSummary} />}
+        {view === "summary" && <SummaryPage competitors={competitors} onSelectFirm={handleSelectFirm} />}
 
         {view === "audit" && (
           <div>
             {!selectedFirmName ? (
               <div style={{ ...cardStyle, textAlign:"center", padding:48 }}>
                 <div style={{ ...sans(), fontSize:20, fontWeight:700, marginBottom:8 }}>No firm selected</div>
-                <div style={{ fontSize:13, color:MUTED }}>Select a competitor from the shell to begin auditing.</div>
+                <div style={{ fontSize:13, color:MUTED }}>Select a competitor from the tray on the left to begin auditing.</div>
               </div>
             ) : firmForTabs && (
               <>
