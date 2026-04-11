@@ -54,8 +54,8 @@ let _setPreview = null;
 const ImageSlot = ({image,onUpload,onDelete,label,height=180,contain=false}) => {
   const ref = useRef(null);
  
- const handle = (e) => { const f=e.target.files?.[0]; if(!f)return; const r=new FileReader(); r.onload=async(ev)=>{ const compressed=await compressImage(ev.target.result); onUpload(compressed); }; r.readAsDataURL(f); };
- 
+ const handle = (e) => { const f=e.target.files?.[0]; if(!f)return; const r=new FileReader(); r.onload=(ev)=>{ compressImage(ev.target.result).then(img=>onUpload(img)).catch(()=>onUpload(ev.target.result)); }; r.readAsDataURL(f); };
+  
   const imgHeight = height === null ? "auto" : height;
   const imgFit = height === null ? "contain" : contain ? "contain" : "cover";
   return <div style={{marginBottom:12}}>
@@ -72,7 +72,7 @@ const ImageSlot = ({image,onUpload,onDelete,label,height=180,contain=false}) => 
 
 const TwoColLayout = ({children,screenshot,onScreenshot,onDelete,label}) => {
   const ref = useRef(null);
-const handle = (e) => { const f=e.target.files?.[0]; if(!f)return; const r=new FileReader(); r.onload=async(ev)=>{ const compressed=await compressImage(ev.target.result); onScreenshot(compressed); }; r.readAsDataURL(f); };
+const handle = (e) => { const f=e.target.files?.[0]; if(!f)return; const r=new FileReader(); r.onload=(ev)=>{ compressImage(ev.target.result).then(img=>onScreenshot(img)).catch(()=>onScreenshot(ev.target.result)); }; r.readAsDataURL(f); };
   
   return <div style={{display:"flex",gap:24,alignItems:"flex-start"}}>
     <div style={{flex:"2 1 0",minWidth:0}}>{children}</div>
@@ -455,26 +455,19 @@ export default function XRayVision({ competitors, onBack }) {
   // Mark ready immediately — images are loaded by the effect below
   
 // Load
+ const orderStr = order.join(',');
   useEffect(()=>{ setLoaded(true); },[]);
-  // Load images whenever firm list changes — merges server (Redis via prop) + local cache
   useEffect(()=>{
     if(order.length===0) return;
     (async()=>{
       const nextImgs={};
       for(const id of order){
         nextImgs[id]={};
-        // 1. Local cache first
         for(const slot of IMG_SLOTS){ const img=await imgGet(id,slot); if(img) nextImgs[id][slot]=img; }
-        // 2. Server images from competitors prop override cache (shared across users)
         const serverImgs=firms[id]?.images||{};
         Object.assign(nextImgs[id], serverImgs);
       }
-      setImages(prev=>{
-        const merged={};
-        // 3. Any freshly-uploaded in-memory images win final precedence
-        for(const id of order){ merged[id]={...nextImgs[id],...(prev[id]||{})}; }
-        return merged;
-      });
+      setImages(nextImgs);
     })();
   },[orderStr]);
 
