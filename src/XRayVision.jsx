@@ -53,7 +53,9 @@ let _setPreview = null;
 
 const ImageSlot = ({image,onUpload,onDelete,label,height=180,contain=false}) => {
   const ref = useRef(null);
-  const handle = (e) => { const f=e.target.files?.[0]; if(!f)return; const r=new FileReader(); r.onload=(ev)=>onUpload(ev.target.result); r.readAsDataURL(f); };
+ 
+ const handle = (e) => { const f=e.target.files?.[0]; if(!f)return; const r=new FileReader(); r.onload=async(ev)=>{ const compressed=await compressImage(ev.target.result); onUpload(compressed); }; r.readAsDataURL(f); };
+ 
   const imgHeight = height === null ? "auto" : height;
   const imgFit = height === null ? "contain" : contain ? "contain" : "cover";
   return <div style={{marginBottom:12}}>
@@ -70,7 +72,8 @@ const ImageSlot = ({image,onUpload,onDelete,label,height=180,contain=false}) => 
 
 const TwoColLayout = ({children,screenshot,onScreenshot,onDelete,label}) => {
   const ref = useRef(null);
-  const handle = (e) => { const f=e.target.files?.[0]; if(!f)return; const r=new FileReader(); r.onload=(ev)=>onScreenshot(ev.target.result); r.readAsDataURL(f); };
+const handle = (e) => { const f=e.target.files?.[0]; if(!f)return; const r=new FileReader(); r.onload=async(ev)=>{ const compressed=await compressImage(ev.target.result); onScreenshot(compressed); }; r.readAsDataURL(f); };
+  
   return <div style={{display:"flex",gap:24,alignItems:"flex-start"}}>
     <div style={{flex:"2 1 0",minWidth:0}}>{children}</div>
     <div style={{flex:"1 1 0",minWidth:200,position:"sticky",top:24}}>
@@ -450,24 +453,33 @@ export default function XRayVision({ competitors, onBack }) {
 // Stable string for effect deps (avoids new array ref on every render)
   const orderStr = order.join(',');
   // Mark ready immediately — images are loaded by the effect below
+  
+// Load
   useEffect(()=>{ setLoaded(true); },[]);
-  // Reload images whenever the firm list changes (fires when competitors prop first arrives from API)
+  // Load images whenever firm list changes — merges server (Redis via prop) + local cache
   useEffect(()=>{
     if(order.length===0) return;
     (async()=>{
       const nextImgs={};
       for(const id of order){
         nextImgs[id]={};
+        // 1. Local cache first
         for(const slot of IMG_SLOTS){ const img=await imgGet(id,slot); if(img) nextImgs[id][slot]=img; }
+        // 2. Server images from competitors prop override cache (shared across users)
+        const serverImgs=firms[id]?.images||{};
+        Object.assign(nextImgs[id], serverImgs);
       }
-      // Merge: localStorage as base, keep any in-memory uploads on top
       setImages(prev=>{
         const merged={};
+        // 3. Any freshly-uploaded in-memory images win final precedence
         for(const id of order){ merged[id]={...nextImgs[id],...(prev[id]||{})}; }
         return merged;
       });
     })();
   },[orderStr]);
+
+
+  
   // Guard persist effects — never write empty data before competitors loads
   useEffect(()=>{ if(loaded && Object.keys(firms).length>0) sSet(SK,firms); },[firms,loaded]);
   useEffect(()=>{ if(loaded && order.length>0) sSet(SO,order); },[orderStr,loaded]);
@@ -485,10 +497,18 @@ export default function XRayVision({ competitors, onBack }) {
     }}));
   },[sel]);
 
-  const updateImage = useCallback((slot,data)=>{
+const updateImage = useCallback((slot,data)=>{
     if(!sel) return;
-    imgSet(sel,slot,data);
+    // Instant local update
     setImages(p=>({...p,[sel]:{...(p[sel]||{}),[slot]:data}}));
+    // Cache locally
+    imgSet(sel,slot,data);
+    // Persist to server so all users see it
+    fetch('/api/save-image',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({firmName:sel,slot,imageData:data||null})
+    }).catch(err=>console.error('Failed to save image:',err));
   },[sel]);
 
   const addFirm = () => {
