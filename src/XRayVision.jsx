@@ -451,7 +451,6 @@ export default function XRayVision({ competitors, onBack }) {
   _setPreview = setPreviewImg;
 
 // Stable string for effect deps (avoids new array ref on every render)
-  const orderStr = order.join(',');
   // Mark ready immediately — images are loaded by the effect below
   
 // Load
