@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 
-// Standard categories for assessment
 const CATEGORIES = [
   { id: "brand", label: "Brand & Positioning", description: "Tagline, mission, value prop, niche vs. generalist positioning, 'why us' clarity" },
   { id: "market", label: "Market Focus", description: "Sector organization, target market alignment (healthcare, senior living, housing, community)" },
@@ -14,19 +13,9 @@ const CATEGORIES = [
   { id: "cta", label: "Calls to Action & BD", description: "Engagement funnels — contact forms, RFP submission, downloadable resources" },
 ];
 
-const COMPETITOR_GROUPS = [
-  { group: "Healthcare (Large)", firms: ["HKS", "HOK", "HDR", "Cannon", "ESA", "Gresham Smith", "BSA", "E4H", "SmithGroup", "NBBJ"] },
-  { group: "Healthcare (Small)", firms: ["ARC", "Guidon", "Champlin", "Haffer"] },
-  { group: "Senior Living", firms: ["Perkins Eastman", "RLPS", "Progressive AE"] },
-  { group: "Peer Group", firms: ["Design Collaborative", "KrM", "MSKTD", "CSO"] },
-];
-
-const ALL_FIRMS = COMPETITOR_GROUPS.flatMap((g) => g.firms);
-
 const ACCENT = "#5c6d5e";
 const ACCENT_WARM = "#b68d40";
 
-// Helper for Colors
 const getColor = (avg) => {
   const val = parseFloat(avg);
   if (!val || val === 0) return "#d1d5db";
@@ -36,7 +25,6 @@ const getColor = (avg) => {
   return "#a4433a";
 };
 
-// Helper for Averages
 const getAvg = (scores) => {
   if (!scores) return "0.0";
   const vals = Object.values(scores).map(v => parseFloat(v)).filter((v) => v > 0);
@@ -48,17 +36,12 @@ const ScoreButton = ({ value, selected, onClick, color }) => (
   <button
     onClick={onClick}
     style={{
-      width: 36,
-      height: 36,
-      borderRadius: "50%",
+      width: 36, height: 36, borderRadius: "50%",
       border: selected ? `2px solid ${color}` : "2px solid #d1d5db",
       background: selected ? color : "transparent",
       color: selected ? "#fff" : "#6b7280",
-      fontFamily: "monospace",
-      fontSize: 13,
-      fontWeight: 600,
-      cursor: "pointer",
-      transition: "all 0.15s ease",
+      fontFamily: "monospace", fontSize: 13, fontWeight: 600,
+      cursor: "pointer", transition: "all 0.15s ease",
     }}
   >
     {value}
@@ -71,30 +54,18 @@ const CategoryRow = ({ category, score, notes, onScoreChange, onNotesChange, acc
     <div style={{ borderBottom: "1px solid #e8e4df", padding: "16px 0" }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 17, color: "#1a1a1a", marginBottom: 2, fontWeight: "bold" }}>
-            {category.label}
-          </div>
-          <div style={{ fontSize: 12, color: "#8a8278", lineHeight: 1.4 }}>
-            {category.description}
-          </div>
+          <div style={{ fontSize: 17, color: "#1a1a1a", marginBottom: 2, fontWeight: "bold" }}>{category.label}</div>
+          <div style={{ fontSize: 12, color: "#8a8278", lineHeight: 1.4 }}>{category.description}</div>
         </div>
         <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
           {[1, 2, 3, 4, 5].map((v) => (
-            <ScoreButton
-              key={v}
-              value={v}
-              selected={score === v}
-              onClick={() => onScoreChange(v)}
-              color={accentColor}
-            />
+            <ScoreButton key={v} value={v} selected={score === v} onClick={() => onScoreChange(v)} color={accentColor} />
           ))}
         </div>
         <button
           onClick={() => setExpanded(!expanded)}
           style={{ background: "none", border: "none", cursor: "pointer", color: "#8a8278", fontSize: 18, padding: "4px 8px", transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
-        >
-          ▾
-        </button>
+        >▾</button>
       </div>
       {expanded && (
         <div style={{ marginTop: 12 }}>
@@ -113,41 +84,50 @@ const CategoryRow = ({ category, score, notes, onScoreChange, onNotesChange, acc
 export default function CompetitorScorecard({ competitors = {}, onBack }) {
   const [localData, setLocalData] = useState({});
   const [selectedFirm, setSelectedFirm] = useState(null);
-  const [view, setView] = useState("score"); 
+  const [view, setView] = useState("score");
   const [search, setSearch] = useState("");
-  const [swotText, setSwotText] = useState({});
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importError, setImportError] = useState("");
 
   useEffect(() => {
-    if (competitors) {
+    if (competitors && Object.keys(competitors).length > 0) {
       setLocalData(competitors);
     }
   }, [competitors]);
 
-const getFirmData = useCallback((firmName) => {
-    // This line is key: it goes deep into the .scorecard sub-object
+  // Build sidebar groups dynamically from actual data
+  const displayGroups = React.useMemo(() => {
+    const keys = Object.keys(localData);
+    if (keys.length === 0) return [];
+    const groups = {};
+    keys.forEach(key => {
+      const group = localData[key]?.peerGroup || "Other";
+      if (!groups[group]) groups[group] = [];
+      groups[group].push(key);
+    });
+    return Object.entries(groups).map(([group, firms]) => ({ group, firms }));
+  }, [localData]);
+
+  const getFirmData = useCallback((firmName) => {
     return localData?.[firmName]?.scorecard || { scores: {}, notes: {} };
   }, [localData]);
 
+  // FIX: update the nested scorecard without clobbering the parent firm object
   const updateScore = async (firm, catId, value) => {
-    const current = getFirmData(firm);
-    const updatedFirm = { 
-      ...current, 
-      name: firm, // ensure name is present
-      scores: { ...current.scores, [catId]: value } 
+    const updatedFirmData = {
+      ...localData[firm],
+      scorecard: {
+        ...localData[firm]?.scorecard,
+        scores: { ...localData[firm]?.scorecard?.scores, [catId]: value }
+      }
     };
-
-    // Update local screen immediately
-    setLocalData(prev => ({
-      ...prev,
-      [firm]: updatedFirm
-    }));
-
-    // Save to Redis via your API
+    setLocalData(prev => ({ ...prev, [firm]: updatedFirmData }));
     try {
       await fetch('/api/save-competitor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedFirm)
+        body: JSON.stringify({ name: firm, ...updatedFirmData })
       });
     } catch (err) {
       console.error('Failed to save score:', err);
@@ -155,31 +135,43 @@ const getFirmData = useCallback((firmName) => {
   };
 
   const updateNotes = async (firm, catId, value) => {
-    const current = getFirmData(firm);
-    const updatedFirm = { 
-      ...current, 
-      name: firm, 
-      notes: { ...current.notes, [catId]: value } 
+    const updatedFirmData = {
+      ...localData[firm],
+      scorecard: {
+        ...localData[firm]?.scorecard,
+        notes: { ...localData[firm]?.scorecard?.notes, [catId]: value }
+      }
     };
-
-    // Update local screen
-    setLocalData(prev => ({
-      ...prev,
-      [firm]: updatedFirm
-    }));
-
-    // Save to Redis
+    setLocalData(prev => ({ ...prev, [firm]: updatedFirmData }));
     try {
       await fetch('/api/save-competitor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedFirm)
+        body: JSON.stringify({ name: firm, ...updatedFirmData })
       });
     } catch (err) {
       console.error('Failed to save note:', err);
     }
   };
-  const scoredFirms = (ALL_FIRMS || []).filter((f) => {
+
+  const handleImport = () => {
+    setImportError("");
+    try {
+      const parsed = JSON.parse(importText);
+      if (typeof parsed === "object" && !Array.isArray(parsed)) {
+        setLocalData(prev => ({ ...prev, ...parsed }));
+        setImportText("");
+        setShowImport(false);
+      } else {
+        setImportError("Expected a JSON object keyed by firm name.");
+      }
+    } catch (e) {
+      setImportError("Invalid JSON: " + e.message);
+    }
+  };
+
+  // FIX: use dynamic localData keys instead of hardcoded ALL_FIRMS
+  const scoredFirms = Object.keys(localData).filter((f) => {
     const d = getFirmData(f);
     return d?.scores && Object.values(d.scores).some(v => v > 0);
   }).sort((a, b) => {
@@ -191,20 +183,44 @@ const getFirmData = useCallback((firmName) => {
       {/* Header */}
       <div style={{ background: "#2c2c2c", padding: "32px 32px 28px", color: "#f5f2ed" }}>
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
-          <button onClick={onBack} style={{ background: "none", border: "none", color: "#b68d40", cursor: "pointer", marginBottom: 16 }}>
-            ← Back to Home
-          </button>
+          {onBack && (
+            <button onClick={onBack} style={{ background: "none", border: "none", color: "#b68d40", cursor: "pointer", marginBottom: 16 }}>
+              ← Back to Home
+            </button>
+          )}
           <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 2.5, color: "#b68d40", marginBottom: 8 }}>
             MKM Design Group
           </div>
           <h1 style={{ fontSize: 32, margin: 0 }}>Competitor Analysis Scorecard</h1>
-          
-          <div style={{ display: "flex", gap: 20, marginTop: 24 }}>
+          <div style={{ display: "flex", gap: 20, marginTop: 24, alignItems: "center" }}>
             <button onClick={() => setView("score")} style={{ padding: "10px 0", border: "none", background: "none", color: view === "score" ? "#fff" : "#7a756d", borderBottom: view === "score" ? "2px solid #b68d40" : "none", cursor: "pointer", fontWeight: "bold" }}>Score Firms</button>
             <button onClick={() => setView("compare")} style={{ padding: "10px 0", border: "none", background: "none", color: view === "compare" ? "#fff" : "#7a756d", borderBottom: view === "compare" ? "2px solid #b68d40" : "none", cursor: "pointer", fontWeight: "bold" }}>Compare</button>
+            <button onClick={() => setShowImport(!showImport)} style={{ padding: "10px 0", border: "none", background: "none", color: showImport ? "#fff" : "#7a756d", borderBottom: showImport ? "2px solid #b68d40" : "none", cursor: "pointer", fontWeight: "bold", marginLeft: "auto" }}>⬆ Import JSON</button>
           </div>
         </div>
       </div>
+
+      {/* Import Panel */}
+      {showImport && (
+        <div style={{ background: "#1e1e1e", padding: "24px 32px", borderBottom: "2px solid #b68d40" }}>
+          <div style={{ maxWidth: 960, margin: "0 auto" }}>
+            <p style={{ color: "#d6d0c8", fontSize: 13, marginTop: 0 }}>
+              Paste your <code>/api/competitors</code> JSON below. It will be merged into the current data.
+            </p>
+            <textarea
+              value={importText}
+              onChange={e => setImportText(e.target.value)}
+              placeholder={'{ "FirmName": { "scorecard": { "scores": {}, "notes": {} }, ... } }'}
+              style={{ width: "100%", minHeight: 140, padding: 12, borderRadius: 8, border: "1px solid #444", background: "#111", color: "#e0e0e0", fontFamily: "monospace", fontSize: 12, resize: "vertical", boxSizing: "border-box" }}
+            />
+            {importError && <div style={{ color: "#f87171", fontSize: 13, marginTop: 8 }}>{importError}</div>}
+            <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+              <button onClick={handleImport} style={{ padding: "8px 20px", background: ACCENT_WARM, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: "bold" }}>Import</button>
+              <button onClick={() => { setShowImport(false); setImportError(""); setImportText(""); }} style={{ padding: "8px 20px", background: "transparent", color: "#d6d0c8", border: "1px solid #555", borderRadius: 6, cursor: "pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 32px 64px" }}>
         {view === "score" ? (
@@ -212,13 +228,14 @@ const getFirmData = useCallback((firmName) => {
             {/* Sidebar */}
             <div style={{ width: 220, flexShrink: 0 }}>
               <input
-                type="text"
-                placeholder="Search firms..."
-                value={search}
+                type="text" placeholder="Search firms..." value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #d6d0c8", marginBottom: 16 }}
               />
-              {COMPETITOR_GROUPS.map(g => (
+              {displayGroups.length === 0 && (
+                <div style={{ color: "#8a8278", fontSize: 13 }}>No firms loaded. Use ⬆ Import JSON to add data.</div>
+              )}
+              {displayGroups.map(g => (
                 <div key={g.group} style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 10, fontWeight: "bold", color: "#8a8278", marginBottom: 8 }}>{g.group}</div>
                   {g.firms.filter(f => f.toLowerCase().includes(search.toLowerCase())).map(firm => {
@@ -227,12 +244,17 @@ const getFirmData = useCallback((firmName) => {
                       <button
                         key={firm}
                         onClick={() => setSelectedFirm(firm)}
-                        style={{ width: "100%", textAlign: "left", padding: "8px", borderRadius: 6, border: "none", background: selectedFirm === firm ? ACCENT : "transparent", color: selectedFirm === firm ? "#fff" : "#1a1a1a", cursor: "pointer", display: "flex", justifyContent: "space-between" }}
+                        style={{
+                          width: "100%", textAlign: "left", padding: "8px", borderRadius: 6,
+                          border: "none", background: selectedFirm === firm ? ACCENT : "transparent",
+                          color: selectedFirm === firm ? "#fff" : "#1a1a1a", cursor: "pointer",
+                          display: "flex", justifyContent: "space-between"
+                        }}
                       >
                         <span>{firm}</span>
                         {parseFloat(avg) > 0 && <span style={{ fontSize: 11 }}>{avg}</span>}
                       </button>
-                    )
+                    );
                   })}
                 </div>
               ))}
@@ -256,38 +278,40 @@ const getFirmData = useCallback((firmName) => {
                   ))}
                 </div>
               ) : (
-                <div style={{ padding: 48, textAlign: "center", color: "#8a8278" }}>Select a firm from the list to start scoring.</div>
+                <div style={{ padding: 48, textAlign: "center", color: "#8a8278" }}>
+                  Select a firm from the list to start scoring.
+                </div>
               )}
             </div>
           </div>
         ) : (
           /* Compare View */
           <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e8e4df", overflow: "hidden" }}>
-             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-               <thead>
-                 <tr style={{ background: "#faf8f5" }}>
-                   <th style={{ padding: 12, textAlign: "left" }}>Firm</th>
-                   <th style={{ padding: 12 }}>Avg</th>
-                   {CATEGORIES.slice(0, 5).map(c => <th key={c.id} style={{ padding: 12, fontSize: 10 }}>{c.label}</th>)}
-                 </tr>
-               </thead>
-               <tbody>
-                 {scoredFirms.length > 0 ? scoredFirms.map(f => {
-                   const d = getFirmData(f);
-                   return (
-                     <tr key={f} style={{ borderTop: "1px solid #e8e4df" }}>
-                       <td style={{ padding: 12, fontWeight: "bold" }}>{f}</td>
-                       <td style={{ padding: 12, textAlign: "center", color: getColor(getAvg(d.scores)) }}>{getAvg(d.scores)}</td>
-                       {CATEGORIES.slice(0, 5).map(c => (
-                         <td key={c.id} style={{ padding: 12, textAlign: "center" }}>{d.scores[c.id] || "—"}</td>
-                       ))}
-                     </tr>
-                   )
-                 }) : (
-                   <tr><td colSpan="7" style={{ padding: 24, textAlign: "center" }}>No firms scored yet.</td></tr>
-                 )}
-               </tbody>
-             </table>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#faf8f5" }}>
+                  <th style={{ padding: 12, textAlign: "left" }}>Firm</th>
+                  <th style={{ padding: 12 }}>Avg</th>
+                  {CATEGORIES.slice(0, 5).map(c => <th key={c.id} style={{ padding: 12, fontSize: 10 }}>{c.label}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {scoredFirms.length > 0 ? scoredFirms.map(f => {
+                  const d = getFirmData(f);
+                  return (
+                    <tr key={f} style={{ borderTop: "1px solid #e8e4df" }}>
+                      <td style={{ padding: 12, fontWeight: "bold" }}>{f}</td>
+                      <td style={{ padding: 12, textAlign: "center", color: getColor(getAvg(d.scores)) }}>{getAvg(d.scores)}</td>
+                      {CATEGORIES.slice(0, 5).map(c => (
+                        <td key={c.id} style={{ padding: 12, textAlign: "center" }}>{d.scores?.[c.id] || "—"}</td>
+                      ))}
+                    </tr>
+                  );
+                }) : (
+                  <tr><td colSpan="7" style={{ padding: 24, textAlign: "center" }}>No firms scored yet.</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
