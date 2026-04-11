@@ -447,22 +447,32 @@ export default function XRayVision({ competitors, onBack }) {
   const [previewImg,setPreviewImg] = useState(null);
   _setPreview = setPreviewImg;
 
-  // Load
-  useEffect(()=>{(async()=>{
-    const d = await sGet(SK)||{};
-    const o = await sGet(SO)||[];
-    setFirms(d); setOrder(o);
-    // Load images for all firms
-    const imgs = {};
-    for(const id of o) { imgs[id]={}; for(const slot of IMG_SLOTS) { const img = await imgGet(id,slot); if(img) imgs[id][slot]=img; } }
-    setImages(imgs);
-    setLoaded(true);
-  })();},[]);
+// Stable string for effect deps (avoids new array ref on every render)
+  const orderStr = order.join(',');
+  // Mark ready immediately — images are loaded by the effect below
+  useEffect(()=>{ setLoaded(true); },[]);
+  // Reload images whenever the firm list changes (fires when competitors prop first arrives from API)
+  useEffect(()=>{
+    if(order.length===0) return;
+    (async()=>{
+      const nextImgs={};
+      for(const id of order){
+        nextImgs[id]={};
+        for(const slot of IMG_SLOTS){ const img=await imgGet(id,slot); if(img) nextImgs[id][slot]=img; }
+      }
+      // Merge: localStorage as base, keep any in-memory uploads on top
+      setImages(prev=>{
+        const merged={};
+        for(const id of order){ merged[id]={...nextImgs[id],...(prev[id]||{})}; }
+        return merged;
+      });
+    })();
+  },[orderStr]);
+  // Guard persist effects — never write empty data before competitors loads
+  useEffect(()=>{ if(loaded && Object.keys(firms).length>0) sSet(SK,firms); },[firms,loaded]);
+  useEffect(()=>{ if(loaded && order.length>0) sSet(SO,order); },[orderStr,loaded]);
 
-  // Persist firms
-  useEffect(()=>{ if(loaded) sSet(SK,firms); },[firms,loaded]);
-  useEffect(()=>{ if(loaded) sSet(SO,order); },[order,loaded]);
-
+  
   // Auto-select first firm when competitors load
   useEffect(()=>{ if(!sel && order.length>0) setSel(order[0]); },[order.length]);
 
