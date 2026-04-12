@@ -510,19 +510,27 @@ export default function XRayVision({ competitors, onBack }) {
     }}));
   },[sel]);
 
-const updateImage = useCallback((slot,data)=>{
-    if(!sel) return;
-    // Instant local update
-    setImages(p=>({...p,[sel]:{...(p[sel]||{}),[slot]:data}}));
-    // Cache locally
-    imgSet(sel,slot,data);
-    // Persist to server so all users see it
-    fetch('/api/save-image',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({firmName:sel,slot,imageData:data||null})
-    }).catch(err=>console.error('Failed to save image:',err));
-  },[sel]);
+const updateImage = useCallback((slot, data) => {
+  if (!sel) return;
+  // Instant local update with base64 so UI doesn't wait
+  setImages(p => ({ ...p, [sel]: { ...(p[sel] || {}), [slot]: data } }));
+  imgSet(sel, slot, data);
+  // Persist to server, then swap base64 → blob URL in state + cache
+  fetch('/api/save-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ firmName: sel, slot, imageData: data || null })
+  })
+    .then(r => r.json())
+    .then(({ url }) => {
+      if (url) {
+        // Replace base64 with the permanent blob URL
+        setImages(p => ({ ...p, [sel]: { ...(p[sel] || {}), [slot]: url } }));
+        imgSet(sel, slot, url);
+      }
+    })
+    .catch(err => console.error('Failed to save image:', err));
+}, [sel]);
 
   const addFirm = () => {
     if(!newName.trim()) return;
