@@ -58,8 +58,7 @@ function compressImage(dataUrl, maxWidth=1400, quality=0.72) {
 }
 
 
-// ──
-─ SHARED COMPONENTS ───────────────────────────────────────────────
+// // ─── SHARED COMPONENTS ───────────────────────────────────────────────
 const inputSt = {...s(),width:"100%",padding:"10px 12px",border:`1px solid #d6d0c8`,borderRadius:8,fontSize:13,color:D,background:C,outline:"none",boxSizing:"border-box"};
 const txSt = {...inputSt,minHeight:80,resize:"vertical",background:S};
 const cardSt = {background:C,borderRadius:12,border:`1px solid ${BD}`,padding:"24px 28px",marginBottom:20};
