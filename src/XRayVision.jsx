@@ -37,7 +37,29 @@ async function imgGet(firmId, slot) { try { return localStorage.getItem(`xray-im
 async function imgSet(firmId, slot, data) { try { if (data) { localStorage.setItem(`xray-img-${firmId}-${slot}`, data); } else { localStorage.removeItem(`xray-img-${firmId}-${slot}`); } } catch(e) { console.error(e); } }
 const IMG_SLOTS = ["logo","hero","fullPage","portfolio","aboutScreenshot","peopleScreenshot","hpExtra1","hpExtra2","hpExtra3","aboutExtra1","aboutExtra2","aboutExtra3","peopleExtra1","peopleExtra2","peopleExtra3","portExtra1","portExtra2","portExtra3"];
 
-// ─── SHARED COMPONENTS ───────────────────────────────────────────────
+function compressImage(dataUrl, maxWidth=1400, quality=0.72) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onerror = () => resolve(dataUrl);
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > maxWidth) { height = Math.round(height * maxWidth / width); width = maxWidth; }
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(dataUrl); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } catch(e) { resolve(dataUrl); }
+    };
+    img.src = dataUrl;
+  });
+}
+
+
+// ──
+─ SHARED COMPONENTS ───────────────────────────────────────────────
 const inputSt = {...s(),width:"100%",padding:"10px 12px",border:`1px solid #d6d0c8`,borderRadius:8,fontSize:13,color:D,background:C,outline:"none",boxSizing:"border-box"};
 const txSt = {...inputSt,minHeight:80,resize:"vertical",background:S};
 const cardSt = {background:C,borderRadius:12,border:`1px solid ${BD}`,padding:"24px 28px",marginBottom:20};
