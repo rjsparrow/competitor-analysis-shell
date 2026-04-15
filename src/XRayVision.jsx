@@ -456,8 +456,12 @@ export default function XRayVision({ competitors, onBack }) {
   const firms = competitors || {};
   const order = Object.keys(firms).sort((a,b) => firms[a].name.localeCompare(firms[b].name));
   // eslint-disable-next-line no-unused-vars
-  const setFirms = () => {};
-  const setOrder = () => {};
+const [firms, setFirms] = useState(competitors || {});
+const [order, setOrder] = useState(
+  Object.keys(competitors || {}).sort((a,b) =>
+    (competitors[a]?.name||'').localeCompare(competitors[b]?.name||'')
+  )
+);
   const [sel,setSel] = useState(null);
   const [tab,setTab] = useState(null); // null = landing view
   const [view,setView] = useState("audit"); // audit|matrix|ab|import
