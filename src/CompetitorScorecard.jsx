@@ -113,7 +113,6 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
     return localData?.[firmName]?.scorecard || { scores: {}, notes: {} };
   }, [localData]);
 
-  // FIX: update the nested scorecard without clobbering the parent firm object
   const updateScore = async (firm, catId, value) => {
     const updatedFirmData = {
       ...localData[firm],
@@ -154,7 +153,8 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
     }
   };
 
-  const handleImport = () => {
+  // FIX: async import that also persists each firm to the API
+  const handleImport = async () => {
     setImportError("");
     try {
       const parsed = JSON.parse(importText);
@@ -162,6 +162,15 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
         setLocalData(prev => ({ ...prev, ...parsed }));
         setImportText("");
         setShowImport(false);
+        await Promise.all(
+          Object.entries(parsed).map(([name, data]) =>
+            fetch('/api/save-competitor', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name, ...data })
+            }).catch(err => console.error(`Failed to save ${name}:`, err))
+          )
+        );
       } else {
         setImportError("Expected a JSON object keyed by firm name.");
       }
@@ -170,7 +179,22 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
     }
   };
 
-  // FIX: use dynamic localData keys instead of hardcoded ALL_FIRMS
+  // FIX: delete handler — removes from local state and calls delete API
+  const handleDelete = async (firm) => {
+    if (!window.confirm(`Delete "${firm}"? This cannot be undone.`)) return;
+    setLocalData(prev => { const u = { ...prev }; delete u[firm]; return u; });
+    if (selectedFirm === firm) setSelectedFirm(null);
+    try {
+      await fetch('/api/delete-competitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: firm })
+      });
+    } catch (err) {
+      console.error('Failed to delete firm:', err);
+    }
+  };
+
   const scoredFirms = Object.keys(localData).filter((f) => {
     const d = getFirmData(f);
     return d?.scores && Object.values(d.scores).some(v => v > 0);
@@ -241,19 +265,32 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
                   {g.firms.filter(f => f.toLowerCase().includes(search.toLowerCase())).map(firm => {
                     const avg = getAvg(getFirmData(firm)?.scores);
                     return (
-                      <button
-                        key={firm}
-                        onClick={() => setSelectedFirm(firm)}
-                        style={{
-                          width: "100%", textAlign: "left", padding: "8px", borderRadius: 6,
-                          border: "none", background: selectedFirm === firm ? ACCENT : "transparent",
-                          color: selectedFirm === firm ? "#fff" : "#1a1a1a", cursor: "pointer",
-                          display: "flex", justifyContent: "space-between"
-                        }}
-                      >
-                        <span>{firm}</span>
-                        {parseFloat(avg) > 0 && <span style={{ fontSize: 11 }}>{avg}</span>}
-                      </button>
+                      // FIX: wrapper div with trashcan button alongside firm selector
+                      <div key={firm} style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 2 }}>
+                        <button
+                          onClick={() => setSelectedFirm(firm)}
+                          style={{
+                            flex: 1, textAlign: "left", padding: "8px", borderRadius: 6,
+                            border: "none", background: selectedFirm === firm ? ACCENT : "transparent",
+                            color: selectedFirm === firm ? "#fff" : "#1a1a1a", cursor: "pointer",
+                            display: "flex", justifyContent: "space-between", alignItems: "center"
+                          }}
+                        >
+                          <span style={{ fontSize: 13 }}>{firm}</span>
+                          {parseFloat(avg) > 0 && <span style={{ fontSize: 11 }}>{avg}</span>}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(firm)}
+                          title={`Delete ${firm}`}
+                          style={{
+                            background: "none", border: "none", cursor: "pointer",
+                            color: "#c0392b", fontSize: 13, padding: "4px 6px",
+                            flexShrink: 0, opacity: 0.6, lineHeight: 1,
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                          onMouseLeave={e => e.currentTarget.style.opacity = 0.6}
+                        >🗑</button>
+                      </div>
                     );
                   })}
                 </div>
