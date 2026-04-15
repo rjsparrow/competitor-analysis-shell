@@ -495,7 +495,14 @@ const [order, setOrder] = useState(
     })();
   },[orderStr]);
 
-
+useEffect(() => {
+  if (competitors && Object.keys(competitors).length > 0) {
+    setFirms(competitors);
+    setOrder(Object.keys(competitors).sort((a,b) =>
+      competitors[a].name.localeCompare(competitors[b].name)
+    ));
+  }
+}, [competitors]);
   
   // Guard persist effects — never write empty data before competitors loads
   useEffect(()=>{ if(loaded && Object.keys(firms).length>0) sSet(SK,firms); },[firms,loaded]);
@@ -505,14 +512,19 @@ const [order, setOrder] = useState(
   // Auto-select first firm when competitors load
   useEffect(()=>{ if(!sel && order.length>0) setSel(order[0]); },[order.length]);
 
-  const updateFirm = useCallback((key,value)=>{
-    if(!sel) return;
-    const now = new Date().toISOString().split("T")[0];
-    setFirms(p=>({...p,[sel]:{...p[sel],[key]:value,lastReviewed:now,
-      changelog:{...(p[sel].changelog||{}),
-        [TABS.find(t=>document.querySelector(`[data-tab="${t.id}"]`))?.id||"general"]:now}
-    }}));
-  },[sel]);
+const updateFirm = useCallback((key, value) => {
+  if (!sel) return;
+  const now = new Date().toISOString().split("T")[0];
+  setFirms(p => {
+    const updated = {...p, [sel]: {...p[sel], [key]: value, lastReviewed: now}};
+    fetch('/api/save-competitor', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name: p[sel]?.name || sel, ...updated[sel]})
+    }).catch(err => console.error('Failed to save:', err));
+    return updated;
+  });
+}, [sel]);
 
 const updateImage = useCallback((slot, data) => {
   if (!sel) return;
@@ -577,12 +589,19 @@ const updateImage = useCallback((slot, data) => {
     setSel(id); setTab(null); setView("audit"); setTrayOpen(false);
   };
 
-  const deleteFirm = (id) => {
-    setFirms(p=>{const n={...p};delete n[id];return n;}); setOrder(p=>p.filter(x=>x!==id));
-    IMG_SLOTS.forEach(slot=>imgSet(id,slot,null));
-    setImages(p=>{const n={...p};delete n[id];return n;});
-    if(sel===id){setSel(null);setTab(null);}
-  };
+const deleteFirm = (id) => {
+  const firmName = firms[id]?.name || id;
+  setFirms(p => {const n={...p}; delete n[id]; return n;});
+  setOrder(p => p.filter(x => x !== id));
+  IMG_SLOTS.forEach(slot => imgSet(id, slot, null));
+  setImages(p => {const n={...p}; delete n[id]; return n;});
+  if (sel === id) {setSel(null); setTab(null);}
+  fetch('/api/delete-competitor', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: firmName})
+  }).catch(err => console.error('Failed to delete:', err));
+};
 
   const cur = sel?firms[sel]:null;
   const curImgs = sel?(images[sel]||{}):{};
