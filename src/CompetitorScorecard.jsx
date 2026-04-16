@@ -88,6 +88,7 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
   const [search, setSearch] = useState("");
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
+  const [importFirm, setImportFirm] = useState("");
   const [importError, setImportError] = useState("");
 
   useEffect(() => {
@@ -153,27 +154,37 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
     }
   };
 
-  // FIX: async import that also persists each firm to the API
+  // Import scorecard-only JSON for a specific firm
   const handleImport = async () => {
     setImportError("");
+    const targetFirm = importFirm.trim() || selectedFirm;
+    if (!targetFirm) {
+      setImportError("Enter a firm name or select one from the sidebar first.");
+      return;
+    }
     try {
       const parsed = JSON.parse(importText);
-      if (typeof parsed === "object" && !Array.isArray(parsed)) {
-        setLocalData(prev => ({ ...prev, ...parsed }));
-        setImportText("");
-        setShowImport(false);
-        await Promise.all(
-          Object.entries(parsed).map(([name, data]) =>
-            fetch('/api/save-competitor', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ name, ...data })
-            }).catch(err => console.error(`Failed to save ${name}:`, err))
-          )
-        );
-      } else {
-        setImportError("Expected a JSON object keyed by firm name.");
+      if (typeof parsed !== "object" || Array.isArray(parsed)) {
+        setImportError("Expected a JSON object.");
+        return;
       }
+      // Accept either { scores, notes } directly or { scorecard: { scores, notes } }
+      const scorecardData = parsed.scorecard || parsed;
+      const scores = scorecardData.scores || {};
+      const notes = scorecardData.notes || {};
+      const updatedFirmData = {
+        ...localData[targetFirm],
+        scorecard: { scores, notes }
+      };
+      setLocalData(prev => ({ ...prev, [targetFirm]: updatedFirmData }));
+      setImportText("");
+      setImportFirm("");
+      setShowImport(false);
+      await fetch('/api/save-competitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: targetFirm, ...updatedFirmData })
+      }).catch(err => console.error(`Failed to save ${targetFirm}:`, err));
     } catch (e) {
       setImportError("Invalid JSON: " + e.message);
     }
@@ -229,18 +240,25 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
         <div style={{ background: "#1e1e1e", padding: "24px 32px", borderBottom: "2px solid #b68d40" }}>
           <div style={{ maxWidth: 960, margin: "0 auto" }}>
             <p style={{ color: "#d6d0c8", fontSize: 13, marginTop: 0 }}>
-              Paste your <code>/api/competitors</code> JSON below. It will be merged into the current data.
+              Paste scorecard JSON for a single firm. Paste <code>{"{ \"scores\": {...}, \"notes\": {...} }"}</code> or the full scorecard block.
             </p>
+            <input
+              type="text"
+              value={importFirm}
+              onChange={e => setImportFirm(e.target.value)}
+              placeholder={selectedFirm ? `Firm name (default: ${selectedFirm})` : "Firm name (required)"}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #444", background: "#111", color: "#e0e0e0", fontFamily: "monospace", fontSize: 13, boxSizing: "border-box", marginBottom: 10 }}
+            />
             <textarea
               value={importText}
               onChange={e => setImportText(e.target.value)}
-              placeholder={'{ "FirmName": { "scorecard": { "scores": {}, "notes": {} }, ... } }'}
+              placeholder={'{ "scores": { "brand": 3, "market": 4, ... }, "notes": { "brand": "...", ... } }'}
               style={{ width: "100%", minHeight: 140, padding: 12, borderRadius: 8, border: "1px solid #444", background: "#111", color: "#e0e0e0", fontFamily: "monospace", fontSize: 12, resize: "vertical", boxSizing: "border-box" }}
             />
             {importError && <div style={{ color: "#f87171", fontSize: 13, marginTop: 8 }}>{importError}</div>}
             <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
               <button onClick={handleImport} style={{ padding: "8px 20px", background: ACCENT_WARM, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: "bold" }}>Import</button>
-              <button onClick={() => { setShowImport(false); setImportError(""); setImportText(""); }} style={{ padding: "8px 20px", background: "transparent", color: "#d6d0c8", border: "1px solid #555", borderRadius: 6, cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => { setShowImport(false); setImportError(""); setImportText(""); setImportFirm(""); }} style={{ padding: "8px 20px", background: "transparent", color: "#d6d0c8", border: "1px solid #555", borderRadius: 6, cursor: "pointer" }}>Cancel</button>
             </div>
           </div>
         </div>
