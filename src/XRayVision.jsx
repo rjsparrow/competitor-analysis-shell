@@ -743,15 +743,16 @@ const deleteFirm = (id) => {
                     {cur.url&&<a href={cur.url.startsWith("http")?cur.url:`https://${cur.url}`} target="_blank" rel="noopener noreferrer" style={{...s(),fontSize:13,color:A,textDecoration:"none"}}>{cur.url} ↗</a>}
                     <div style={{...m(),fontSize:11,color:M,marginTop:4}}>{cur.peerGroup} · Last reviewed: {cur.lastReviewed}</div>
                   </div>
-                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                    <div style={{display:"flex",gap:4}}>
-                      {["up","down"].map(t=><button key={t} onClick={()=>updateFirm("thumbsRating",cur.thumbsRating===t?"":t)} style={{fontSize:22,background:cur.thumbsRating===t?(t==="up"?"#e8f5e9":"#fce4ec"):"transparent",border:`1px solid ${cur.thumbsRating===t?(t==="up"?A:"#a4433a"):BD}`,borderRadius:8,padding:"4px 10px",cursor:"pointer"}}>{t==="up"?"👍":"👎"}</button>)}
-                    </div>
-                    <select value={cur.status} onChange={e=>updateFirm("status",e.target.value)} style={{...m(),fontSize:11,padding:"6px 10px",borderRadius:6,border:`1px solid ${BD}`,background:S,color:statusColor(cur.status),fontWeight:600,cursor:"pointer",outline:"none"}}>{STATUS_OPTIONS.map(st=><option key={st} value={st}>{st}</option>)}</select>
-                    <button onClick={()=>{if(confirm(`Delete ${cur.name}?`))deleteFirm(sel);}}
 
-                      
-                </div>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+  <div style={{display:"flex",gap:4}}>
+    {["up","down"].map(t=><button key={t} onClick={()=>updateFirm("thumbsRating",cur.thumbsRating===t?"":t)} style={{fontSize:22,background:cur.thumbsRating===t?(t==="up"?"#e8f5e9":"#fce4ec"):"transparent",border:`1px solid ${cur.thumbsRating===t?(t==="up"?A:"#a4433a"):BD}`,borderRadius:8,padding:"4px 10px",cursor:"pointer"}}>{t==="up"?"👍":"👎"}</button>)}
+  </div>
+  <select value={cur.status} onChange={e=>updateFirm("status",e.target.value)} style={{...m(),fontSize:11,padding:"6px 10px",borderRadius:6,border:`1px solid ${BD}`,background:S,color:statusColor(cur.status),fontWeight:600,cursor:"pointer",outline:"none"}}>{STATUS_OPTIONS.map(st=><option key={st} value={st}>{st}</option>)}</select>
+  <button onClick={()=>{if(confirm(`Delete ${cur.name}?`))deleteFirm(sel);}} style={{background:"none",border:"none",cursor:"pointer",color:"#c4b8a8",fontSize:18,padding:"2px 6px"}} title="Delete firm">🗑</button>
+</div>
+
+                  
                 <div style={{marginTop:16}}>
                   <FL>Key Takeaway</FL>
                   <input value={cur.keyTakeaway||""} onChange={e=>updateFirm("keyTakeaway",e.target.value)} placeholder="One sentence — the most important thing about this competitor..." style={{...inputSt,fontWeight:500,fontSize:14}}/>
