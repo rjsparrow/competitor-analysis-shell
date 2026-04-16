@@ -754,10 +754,10 @@ const deleteFirm = (id) => {
     {["up","down"].map(t=><button key={t} onClick={()=>updateFirm("thumbsRating",cur.thumbsRating===t?"":t)} style={{fontSize:22,background:cur.thumbsRating===t?(t==="up"?"#e8f5e9":"#fce4ec"):"transparent",border:`1px solid ${cur.thumbsRating===t?(t==="up"?A:"#a4433a"):BD}`,borderRadius:8,padding:"4px 10px",cursor:"pointer"}}>{t==="up"?"👍":"👎"}</button>)}
   </div>
   <select value={cur.status} onChange={e=>updateFirm("status",e.target.value)} style={{...m(),fontSize:11,padding:"6px 10px",borderRadius:6,border:`1px solid ${BD}`,background:S,color:statusColor(cur.status),fontWeight:600,cursor:"pointer",outline:"none"}}>{STATUS_OPTIONS.map(st=><option key={st} value={st}>{st}</option>)}</select>
-  <button onClick={()=>{if(confirm(`Delete ${cur.name}?`))deleteFirm(sel);}} style={{background:"none",border:"none",cursor:"pointer",color:"#c4b8a8",fontSize:18,padding:"2px 6px"}} title="Delete firm">🗑</button>
-</div>
+                    <button onClick={()=>{if(confirm(`Delete ${cur.name}?`))deleteFirm(sel);}} style={{background:"none",border:"none",cursor:"pointer",color:"#c4b8a8",fontSize:18,padding:"2px 6px"}} title="Delete firm">🗑</button>
+                  </div>
+                </div>
 
-                  
                 <div style={{marginTop:16}}>
 
                   
