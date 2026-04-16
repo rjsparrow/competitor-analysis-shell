@@ -179,6 +179,8 @@ const TabStructure = ({firm:d,onChange:o,images,onImg}) => {
       </div>
       <FL>Palette Notes</FL>
       <textarea value={d.paletteNotes||""} onChange={e=>o("paletteNotes",e.target.value)} placeholder="Overall color impression..." style={{...txSt,minHeight:60}}/>
+
+      
       <div style={{marginTop:12}}><FL>Photography Style</FL><ChipSet items={PHOTO_STYLES} selected={d.photoStyles||[]} onChange={v=>o("photoStyles",v)}/></div>
       <FL>Visual Identity Notes</FL>
       <textarea value={d.visualIdNotes||""} onChange={e=>o("visualIdNotes",e.target.value)} placeholder="What makes this site visually distinctive — or forgettable?" style={{...txSt,minHeight:60}}/>
@@ -683,6 +685,8 @@ const deleteFirm = (id) => {
         {trayOpen&&<>
           <div onClick={()=>setTrayOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex:200}}/>
           <div style={{position:"fixed",left:0,top:0,bottom:0,width:280,background:C,zIndex:201,boxShadow:"4px 0 24px rgba(0,0,0,0.15)",overflowY:"auto",padding:"24px 20px"}}>
+
+            
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
               <div style={{...s(),fontSize:16,fontWeight:700}}>Firms</div>
               <button onClick={()=>setTrayOpen(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:M}}>×</button>
