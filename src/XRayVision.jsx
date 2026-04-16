@@ -748,6 +748,7 @@ const deleteFirm = (id) => {
                     <div style={{...m(),fontSize:11,color:M,marginTop:4}}>{cur.peerGroup} · Last reviewed: {cur.lastReviewed}</div>
                   </div>
 
+
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
   <div style={{display:"flex",gap:4}}>
     {["up","down"].map(t=><button key={t} onClick={()=>updateFirm("thumbsRating",cur.thumbsRating===t?"":t)} style={{fontSize:22,background:cur.thumbsRating===t?(t==="up"?"#e8f5e9":"#fce4ec"):"transparent",border:`1px solid ${cur.thumbsRating===t?(t==="up"?A:"#a4433a"):BD}`,borderRadius:8,padding:"4px 10px",cursor:"pointer"}}>{t==="up"?"👍":"👎"}</button>)}
@@ -758,6 +759,8 @@ const deleteFirm = (id) => {
 
                   
                 <div style={{marginTop:16}}>
+
+                  
                   <FL>Key Takeaway</FL>
                   <input value={cur.keyTakeaway||""} onChange={e=>updateFirm("keyTakeaway",e.target.value)} placeholder="One sentence — the most important thing about this competitor..." style={{...inputSt,fontWeight:500,fontSize:14}}/>
                 </div>
