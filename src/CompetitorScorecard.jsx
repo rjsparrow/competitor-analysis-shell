@@ -13,7 +13,7 @@ const CATEGORIES = [
   { id: "cta", label: "Calls to Action & BD", description: "Engagement funnels — contact forms, RFP submission, downloadable resources" },
 ];
 
-const ACCENT = "#5c6d5e";
+const ACCENT = "#004368";
 const ACCENT_WARM = "#b68d40";
 
 const getColor = (avg) => {
@@ -134,7 +134,7 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
     }
   };
 
-  const updateNotes = async (firm, catId, value) => {
+const updateNotes = async (firm, catId, value) => {
     const updatedFirmData = {
       ...localData[firm],
       scorecard: {
@@ -143,15 +143,18 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
       }
     };
     setLocalData(prev => ({ ...prev, [firm]: updatedFirmData }));
-    try {
-      await fetch('/api/save-competitor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: firm, ...updatedFirmData })
-      });
-    } catch (err) {
-      console.error('Failed to save note:', err);
-    }
+    clearTimeout(debounceTimers.current[`${firm}-${catId}`]);
+    debounceTimers.current[`${firm}-${catId}`] = setTimeout(async () => {
+      try {
+        await fetch('/api/save-competitor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: firm, ...updatedFirmData })
+        });
+      } catch (err) {
+        console.error('Failed to save note:', err);
+      }
+    }, 600);
   };
 
   // Import scorecard-only JSON for a specific firm
@@ -214,7 +217,7 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
   });
 
   return (
-    <div style={{ fontFamily: "sans-serif", background: "#f5f2ed", minHeight: "100vh", color: "#1a1a1a" }}>
+    <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#f5f2ed", minHeight: "100vh", color: "#1a1a1a" }}>
       {/* Header */}
       <div style={{ background: "#2c2c2c", padding: "32px 32px 28px", color: "#f5f2ed" }}>
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
