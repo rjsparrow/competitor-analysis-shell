@@ -427,15 +427,32 @@ const CompareAB = ({firms,order}) => {
 };
 
 // ─── JSON IMPORT ─────────────────────────────────────────────────────
-const JSONImport = ({onImport}) => {
+const JSONImport = ({onImport, firms, order}) => {
   const [json,setJson] = useState("");
   const [err,setErr] = useState("");
+  const [targetId,setTargetId] = useState("");
   const doImport = () => {
-    try { const d = JSON.parse(json); if(!d.name){setErr("JSON must have a 'name' field");return;} setErr(""); onImport(d); setJson(""); } catch(e) { setErr("Invalid JSON: "+e.message); }
+    try {
+      const d = JSON.parse(json);
+      setErr("");
+      onImport(d, targetId);
+      setJson("");
+      setTargetId("");
+    } catch(e) { setErr("Invalid JSON: "+e.message); }
   };
+  
   return <div style={cardSt}>
     <SL>Import Firm Data (JSON)</SL>
     <div style={{...s(),fontSize:12,color:M,marginBottom:12}}>Paste the X-Ray JSON block from your research prompt output.</div>
+<div style={{marginBottom:12}}>
+  <div style={{...s(),fontSize:12,fontWeight:600,color:"#5c5549",marginBottom:4}}>Apply to Firm</div>
+  <select value={targetId} onChange={e=>setTargetId(e.target.value)} style={{...inputSt,cursor:"pointer"}}>
+    <option value="">Select existing firm...</option>
+    {order.map(id=><option key={id} value={id}>{firms[id]?.name||id}</option>)}
+  </select>
+</div>
+
+    
     <textarea value={json} onChange={e=>{setJson(e.target.value);setErr("");}} placeholder='Paste JSON here...' style={{...txSt,minHeight:120,...m(),fontSize:12}}/>
     {err&&<div style={{color:"#a4433a",fontSize:12,...s(),marginTop:8}}>{err}</div>}
     <button onClick={doImport} disabled={!json.trim()} style={{...s(),marginTop:12,padding:"10px 24px",background:json.trim()?A:"#ccc",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:json.trim()?"pointer":"not-allowed"}}>Import Data</button>
@@ -555,7 +572,22 @@ const updateImage = useCallback((slot, data) => {
     setFirms(p=>{const next={...p,[id]:firm}; sSet(SK,next); return next;}); setOrder(p=>{const next=[...p,id]; sSet(SO,next); return next;}); setImages(p=>({...p,[id]:{}}));
     setSel(id); setTab(null); setTrayOpen(false); setNewName(""); setNewUrl(""); setNewGroup(PEER_GROUPS[0]);
   };
-
+  
+const updateFirmXray = (data, targetId) => {
+  const id = targetId || Date.now().toString();
+  const isExisting = !!firms[id];
+  const existing = isExisting ? firms[id] : {};
+  const merged = { ...existing, ...data, id };
+  setFirms(p => { const next = {...p, [id]: merged}; sSet(SK, next); return next; });
+  if (!isExisting) setOrder(p => { const next = [...p, id]; sSet(SO, next); return next; });
+  setImages(p => ({...p, [id]: p[id] || {}}));
+  setSel(id); setTab(null); setView("audit"); setTrayOpen(false);
+  fetch('/api/save-competitor', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ name: merged.name || id, ...merged })
+  }).catch(err => console.error('Failed to save xray import:', err));
+};
   const importFirm = (data) => {
     const id = Date.now().toString();
     const defaults = {
@@ -680,7 +712,7 @@ const deleteFirm = (id) => {
       {/* ═══ VIEWS ═══ */}
       {view==="matrix"&&<CompareMatrix firms={firms} order={order}/>}
       {view==="ab"&&<CompareAB firms={firms} order={order}/>}
-      {view==="import"&&<JSONImport onImport={importFirm}/>}
+{view==="import"&&<JSONImport onImport={updateFirmXray} firms={firms} order={order}/>}
 
       {view==="audit"&&<>
         {/* NEW FIRM FORM */}
