@@ -429,37 +429,45 @@ const CompareAB = ({firms,order}) => {
 };
 
 // ─── JSON IMPORT ─────────────────────────────────────────────────────
+
+
 const JSONImport = ({onImport, firms, order}) => {
   const [json,setJson] = useState("");
   const [err,setErr] = useState("");
   const [targetId,setTargetId] = useState("");
+  const [newFirmName,setNewFirmName] = useState("");
   const doImport = () => {
     try {
       const d = JSON.parse(json);
+      if (!targetId && !newFirmName.trim() && !d.name) {
+        setErr("Select a firm or enter a new firm name."); return;
+      }
       setErr("");
-      onImport(d, targetId);
-      setJson("");
-      setTargetId("");
+      onImport(d, targetId, newFirmName.trim());
+      setJson(""); setTargetId(""); setNewFirmName("");
     } catch(e) { setErr("Invalid JSON: "+e.message); }
   };
-  
   return <div style={cardSt}>
     <SL>Import Firm Data (JSON)</SL>
     <div style={{...s(),fontSize:12,color:M,marginBottom:12}}>Paste the X-Ray JSON block from your research prompt output.</div>
-<div style={{marginBottom:12}}>
-  <div style={{...s(),fontSize:12,fontWeight:600,color:"#5c5549",marginBottom:4}}>Apply to Firm</div>
-  <select value={targetId} onChange={e=>setTargetId(e.target.value)} style={{...inputSt,cursor:"pointer"}}>
-    <option value="">Select existing firm...</option>
-    {order.map(id=><option key={id} value={id}>{firms[id]?.name||id}</option>)}
-  </select>
-</div>
-
-    
+    <div style={{marginBottom:12}}>
+      <div style={{...s(),fontSize:12,fontWeight:600,color:"#5c5549",marginBottom:4}}>Apply to Firm</div>
+      <select value={targetId} onChange={e=>setTargetId(e.target.value)} style={{...inputSt,cursor:"pointer"}}>
+        <option value="">-- New firm --</option>
+        {order.map(id=><option key={id} value={id}>{firms[id]?.name||id}</option>)}
+      </select>
+    </div>
+    {!targetId&&<div style={{marginBottom:12}}>
+      <div style={{...s(),fontSize:12,fontWeight:600,color:"#5c5549",marginBottom:4}}>New Firm Name</div>
+      <input value={newFirmName} onChange={e=>setNewFirmName(e.target.value)} placeholder="Enter firm name (or include 'name' in JSON)" style={inputSt}/>
+    </div>}
     <textarea value={json} onChange={e=>{setJson(e.target.value);setErr("");}} placeholder='Paste JSON here...' style={{...txSt,minHeight:120,...m(),fontSize:12}}/>
     {err&&<div style={{color:"#a4433a",fontSize:12,...s(),marginTop:8}}>{err}</div>}
     <button onClick={doImport} disabled={!json.trim()} style={{...s(),marginTop:12,padding:"10px 24px",background:json.trim()?A:"#ccc",color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:json.trim()?"pointer":"not-allowed"}}>Import Data</button>
   </div>;
 };
+
+
 
 // ─── MAIN APP ────────────────────────────────────────────────────────
 const TABS = [
@@ -575,11 +583,13 @@ const updateImage = useCallback((slot, data) => {
     setSel(id); setTab(null); setTrayOpen(false); setNewName(""); setNewUrl(""); setNewGroup(PEER_GROUPS[0]);
   };
   
-const updateFirmXray = (data, targetId) => {
-  const id = targetId || Date.now().toString();
+const updateFirmXray = (data, targetId, newFirmName) => {
+  const firmName = targetId ? (firms[targetId]?.name || targetId) : (newFirmName || data.name || "Imported Firm");
+  const id = targetId || firmName;
   const isExisting = !!firms[id];
   const existing = isExisting ? firms[id] : {};
-  const merged = { ...existing, ...data, id };
+  const { scorecard, contentEngine, ...xrayData } = data;
+  const merged = { ...existing, ...xrayData, id, name: firmName };
   setFirms(p => { const next = {...p, [id]: merged}; sSet(SK, next); return next; });
   if (!isExisting) setOrder(p => { const next = [...p, id]; sSet(SO, next); return next; });
   setImages(p => ({...p, [id]: p[id] || {}}));
@@ -587,9 +597,10 @@ const updateFirmXray = (data, targetId) => {
   fetch('/api/save-competitor', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ name: merged.name || id, ...merged })
+    body: JSON.stringify({ name: firmName, ...merged })
   }).catch(err => console.error('Failed to save xray import:', err));
 };
+  
   const importFirm = (data) => {
     const id = Date.now().toString();
     const defaults = {
