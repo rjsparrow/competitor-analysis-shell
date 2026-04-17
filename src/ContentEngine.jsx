@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 
+
 const PEER_GROUPS = ["Healthcare (Large)", "Healthcare (Small)", "Senior Living", "Peer Group"];
 
 // ─── THEME ──────────────────────────────────────────────────────────
@@ -500,77 +501,14 @@ const SummaryPage = ({ competitors, onSelectFirm }) => {
   );
 };
 
-// ─── IMPORT MODAL ─────────────────────────────────────────────────────
-const ImportModal = ({ onClose, onImport }) => {
-  const [text, setText] = useState("");
-  const [error, setError] = useState("");
-
-  const handleImport = () => {
-    try {
-      const parsed = JSON.parse(text);
-      onImport(parsed);
-      onClose();
-    } catch {
-      setError("Invalid JSON — check the format and try again.");
-    }
-  };
-
-  return (
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 400 }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 401, background: CARD, borderRadius: 14, padding: 28, width: "min(560px, 90vw)", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ ...sans(), fontSize: 18, fontWeight: 700, color: DARK }}>Import JSON</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: MUTED, lineHeight: 1 }}>×</button>
-        </div>
-        <div style={{ ...sans(), fontSize: 13, color: MUTED, marginBottom: 14, lineHeight: 1.5 }}>
-          Paste a JSON object for this firm's Content Engine data. It will be merged with any existing data — existing fields are preserved unless overwritten.
-        </div>
-        <textarea
-          value={text}
-          onChange={e => { setText(e.target.value); setError(""); }}
-          style={{ ...textareaStyle, minHeight: 200, ...mono(), fontSize: 12 }}
-          placeholder={'{\n  "content": { "cadence": "2x/month", ... },\n  "social": { ... },\n  "niche": { ... }\n}'}
-          spellCheck={false}
-        />
-        {error && <div style={{ ...sans(), fontSize: 12, color: DANGER, marginTop: 8 }}>{error}</div>}
-        <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "flex-end" }}>
-          <button onClick={onClose} style={btnSmall}>Cancel</button>
-          <button onClick={handleImport} style={{ ...sans(), padding: "8px 20px", background: ACCENT, color: "#fff", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Import</button>
-        </div>
-      </div>
-    </>
-  );
-};
-
-// ─── DELETE CONFIRM MODAL ─────────────────────────────────────────────
-const DeleteConfirmModal = ({ firmName, onClose, onConfirm }) => (
-  <>
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 400 }} />
-    <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 401, background: CARD, borderRadius: 14, padding: 28, width: "min(420px, 90vw)", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
-      <div style={{ ...sans(), fontSize: 18, fontWeight: 700, color: DARK, marginBottom: 10 }}>Delete {firmName}?</div>
-      <div style={{ ...sans(), fontSize: 13, color: MUTED, lineHeight: 1.6, marginBottom: 24 }}>
-        This will permanently delete all Content Engine data for <strong>{firmName}</strong> from the database. This cannot be undone.
-      </div>
-      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        <button onClick={onClose} style={btnSmall}>Cancel</button>
-        <button onClick={onConfirm} style={{ ...sans(), padding: "8px 20px", background: DANGER, color: "#fff", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Delete</button>
-      </div>
-    </div>
-  </>
-);
-
-// ─── MAIN — SHELL-COMPATIBLE ──────────────────────────────────────────
-export default function ContentEngine({ competitors, onBack, onUpdateCompetitor, onDeleteFirm }) 
-
-  
-// 1. Navigation and Sidebar States
-const [selectedFirmName, setSelectedFirmName] = useState(null);
-const [view, setView] = useState("summary");
-const [activeTab, setActiveTab] = useState("content");
-const [trayOpen, setTrayOpen] = useState(false);
-const [search, setSearch] = useState("");
-
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────
+export default function ContentEngine({ competitors, onBack, onUpdateCompetitor, onDeleteFirm }) {
+  // 1. Navigation and Sidebar States
+  const [selectedFirmName, setSelectedFirmName] = useState(null);
+  const [view, setView] = useState("summary");
+  const [activeTab, setActiveTab] = useState("content");
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
   // 2. Local state for current firm's CE data (no page reload needed)
   const [localCe, setLocalCe] = useState(null);
@@ -652,7 +590,6 @@ const [search, setSearch] = useState("");
       if (targetFirm === selectedFirmName) {
         setLocalCe(merged);
       } else {
-        // Save directly for a different firm
         const firm = competitors[targetFirm] || {};
         fetch("/api/save-competitor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...firm, name: targetFirm, contentEngine: merged }) });
       }
@@ -674,47 +611,7 @@ const [search, setSearch] = useState("");
 
   const saveIndicatorColor = saveStatus === "saved" ? "#3a8a5c" : saveStatus === "error" ? DANGER : MUTED;
 
-  
-
-  // 6. Handle JSON import — merge into existing localCe
-  const handleImport = (parsed) => {
-    setLocalCe(prev => {
-      const base = prev || emptyContentEngine();
-      return {
-        ...base,
-        ...parsed,
-        content: { ...base.content, ...(parsed.content || {}) },
-        social: { ...base.social, ...(parsed.social || {}) },
-        niche: { ...base.niche, ...(parsed.niche || {}) },
-      };
-    });
-  };
-
-  // 7. Handle delete firm
-  const handleDelete = async () => {
-    if (!selectedFirmName) return;
-    try {
-      await fetch("/api/delete-competitor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: selectedFirmName }),
-      });
-      onDeleteFirm?.(selectedFirmName);
-      setSelectedFirmName(null);
-      setLocalCe(null);
-      setView("summary");
-    } catch (err) {
-      console.error("Delete failed:", err);
-    }
-    setShowDeleteConfirm(false);
-  };
-
-  // 8. Derived values
-  const currentFirmMeta = selectedFirmName ? competitors[selectedFirmName] : null;
-  const ce = localCe || emptyContentEngine();
-  const firmForTabs = selectedFirmName ? { name: selectedFirmName, ...ce } : null;
-
-  // 9. Sidebar Grouping Logic
+  // Sidebar grouping
   const grouped = {};
   PEER_GROUPS.forEach(g => { grouped[g] = []; });
   Object.keys(competitors || {}).forEach(name => {
@@ -724,25 +621,9 @@ const [search, setSearch] = useState("");
     grouped[g].push({ name: f.name });
   });
 
-  // Save status indicator styles
-  const saveIndicatorColor = saveStatus === "saved" ? "#3a8a5c" : saveStatus === "error" ? DANGER : MUTED;
-  const saveIndicatorText = saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved ✓" : saveStatus === "error" ? "Save failed" : "";
-
   return (
     <div style={{ ...sans(), background: BG, minHeight: "100vh", color: DARK, position: "relative" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-
-      {/* --- MODALS --- */}
-      {showImport && selectedFirmName && (
-        <ImportModal onClose={() => setShowImport(false)} onImport={handleImport} />
-      )}
-      {showDeleteConfirm && selectedFirmName && (
-        <DeleteConfirmModal
-          firmName={selectedFirmName}
-          onClose={() => setShowDeleteConfirm(false)}
-          onConfirm={handleDelete}
-        />
-      )}
 
       {/* --- FLOATING GOLD TRAY BUTTON --- */}
       {!trayOpen && (
@@ -768,13 +649,7 @@ const [search, setSearch] = useState("");
               <div style={{ fontSize: 16, fontWeight: 700 }}>Competitors</div>
               <button onClick={() => setTrayOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: MUTED }}>×</button>
             </div>
-            <input
-              type="text"
-              placeholder="Search..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ ...inputStyle, marginBottom: 16 }}
-            />
+            <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, marginBottom: 16 }} />
             {PEER_GROUPS.map(group => {
               const inGroup = (grouped[group] || []).filter(f => !search || f.name.toLowerCase().includes(search.toLowerCase()));
               if (!inGroup.length) return null;
@@ -782,18 +657,26 @@ const [search, setSearch] = useState("");
                 <div key={group} style={{ marginBottom: 16 }}>
                   <div style={{ ...mono(), fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: MUTED, marginBottom: 6, paddingLeft: 4 }}>{group}</div>
                   {inGroup.map(f => (
-                    <button
-                      key={f.name}
-                      onClick={() => handleSelectFirm(f.name)}
-                      style={{
-                        display: "flex", alignItems: "center", width: "100%", padding: "8px 10px", border: "none", borderRadius: 6,
-                        background: selectedFirmName === f.name ? ACCENT_WARM : "transparent",
-                        color: selectedFirmName === f.name ? "#fff" : DARK,
-                        fontSize: 13, cursor: "pointer", textAlign: "left", marginBottom: 2
-                      }}
-                    >
-                      {f.name}
-                    </button>
+                    <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 2 }}>
+                      <button
+                        onClick={() => handleSelectFirm(f.name)}
+                        style={{
+                          flex: 1, display: "flex", alignItems: "center", padding: "8px 10px", border: "none", borderRadius: 6,
+                          background: selectedFirmName === f.name ? ACCENT_WARM : "transparent",
+                          color: selectedFirmName === f.name ? "#fff" : DARK,
+                          fontSize: 13, cursor: "pointer", textAlign: "left",
+                        }}
+                      >
+                        {f.name}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(f.name)}
+                        title={`Delete ${f.name}`}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: DANGER, fontSize: 13, padding: "4px 6px", flexShrink: 0, opacity: 0.6 }}
+                        onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                        onMouseLeave={e => e.currentTarget.style.opacity = 0.6}
+                      >🗑</button>
+                    </div>
                   ))}
                 </div>
               );
@@ -804,7 +687,6 @@ const [search, setSearch] = useState("");
 
       {/* --- HEADER --- */}
       <div style={{ background: "#2c2c2c", padding: "32px 32px 28px", color: "#f5f2ed" }}>
-        
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", color: ACCENT_WARM, ...sans(), fontSize:13, fontWeight:600, marginBottom:16, padding:0, display:"flex", alignItems:"center", gap:6 }}>
             ← Home
@@ -812,8 +694,20 @@ const [search, setSearch] = useState("");
           <div style={{ ...mono(), fontSize:11, textTransform:"uppercase", letterSpacing:2.5, color: ACCENT_WARM, marginBottom:8 }}>MKM Design Group</div>
           <h1 style={{ ...sans(), fontSize:32, fontWeight:700, margin:0, lineHeight:1.2 }}>Content Engine</h1>
           <p style={{ fontSize:14, color:"#a09a90", marginTop:8, marginBottom:0, maxWidth:600, lineHeight:1.5 }}>Audit competitor content strategies — blogs, social media, thought leadership, and niche positioning.</p>
-        
-         {/* Import Panel */}
+          <div style={{ display:"flex", gap:0, marginTop:24, alignItems:"center" }}>
+            {[{ key:"summary", label:"Summary" },{ key:"audit", label:"Audit Firms" }].map(tab => (
+              <button key={tab.key} onClick={() => setView(tab.key)} style={{ padding:"10px 24px", ...sans(), fontSize:13, fontWeight:600, border:"none", cursor:"pointer", borderBottom: view===tab.key?"2px solid "+ACCENT_WARM:"2px solid transparent", background:"transparent", color: view===tab.key?"#f5f2ed":"#7a756d", transition:"all 0.15s ease" }}>
+                {tab.label}
+              </button>
+            ))}
+            <button onClick={() => setShowImport(!showImport)} style={{ padding:"10px 24px", ...sans(), fontSize:13, fontWeight:600, border:"none", cursor:"pointer", borderBottom: showImport?"2px solid "+ACCENT_WARM:"2px solid transparent", background:"transparent", color: showImport?"#f5f2ed":"#7a756d", marginLeft:"auto" }}>
+              ⬆ Import JSON
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* --- IMPORT PANEL --- */}
       {showImport && (
         <div style={{ background: "#1e1e1e", padding: "24px 32px", borderBottom: "2px solid "+ACCENT_WARM }}>
           <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -827,27 +721,13 @@ const [search, setSearch] = useState("");
               placeholder={'{ "content": { "cadence": "2x/month", ... }, "social": { ... }, "niche": { ... } }'}
               style={{ width:"100%", minHeight:140, padding:12, borderRadius:8, border:"1px solid #444", background:"#111", color:"#e0e0e0", ...mono(), fontSize:12, resize:"vertical", boxSizing:"border-box" }} />
             {importError && <div style={{ ...sans(), color:"#f87171", fontSize:13, marginTop:8 }}>{importError}</div>}
-           
-            
-           <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-                      <h2 style={{ ...sans(), fontSize:26, fontWeight:700, margin:0 }}>{selectedFirmName}</h2>
-                      <StarButton starred={ce.starred} onClick={() => handleChange({ name:selectedFirmName, ...ce, starred:!ce.starred })} />
-                      <div style={{ marginLeft:"auto", display:"flex", gap:10, alignItems:"center" }}>
-                        {saveStatus && <span style={{ ...mono(), fontSize:11, color:saveIndicatorColor }}>{saveStatus==="saving"?"Saving…":saveStatus==="saved"?"Saved ✓":"Save failed"}</span>}
-                        <button onClick={() => handleDelete(selectedFirmName)} style={{ ...btnSmall, color:DANGER, borderColor:DANGER }}>🗑 Delete</button>
-                      </div>
-                    </div>
-          
-        <div style={{ display:"flex", gap:0, marginTop:24, alignItems:"center" }}>
-            {[{ key:"summary", label:"Summary" },{ key:"audit", label:"Audit Firms" }].map(tab => (
-              <button key={tab.key} onClick={() => setView(tab.key)} style={{ padding:"10px 24px", ...sans(), fontSize:13, fontWeight:600, border:"none", cursor:"pointer", borderBottom: view===tab.key?"2px solid "+ACCENT_WARM:"2px solid transparent", background:"transparent", color: view===tab.key?"#f5f2ed":"#7a756d", transition:"all 0.15s ease" }}>
-                {tab.label}
-              </button>
-            ))}
-            <button onClick={() => setShowImport(!showImport)} style={{ padding:"10px 24px", ...sans(), fontSize:13, fontWeight:600, border:"none", cursor:"pointer", borderBottom: showImport?"2px solid "+ACCENT_WARM:"2px solid transparent", background:"transparent", color: showImport?"#f5f2ed":"#7a756d", marginLeft:"auto" }}>
-              ⬆ Import JSON
-            </button>
+            <div style={{ display:"flex", gap:12, marginTop:12 }}>
+              <button onClick={handleImport} style={{ padding:"8px 20px", background:ACCENT_WARM, color:"#fff", border:"none", borderRadius:6, cursor:"pointer", fontWeight:"bold", ...sans() }}>Import</button>
+              <button onClick={() => { setShowImport(false); setImportError(""); setImportText(""); setImportFirm(""); }} style={{ padding:"8px 20px", background:"transparent", color:"#d6d0c8", border:"1px solid #555", borderRadius:6, cursor:"pointer", ...sans() }}>Cancel</button>
+            </div>
           </div>
+        </div>
+      )}
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 32px 64px" }}>
         {view === "summary" && <SummaryPage competitors={competitors} onSelectFirm={handleSelectFirm} />}
@@ -861,32 +741,15 @@ const [search, setSearch] = useState("");
               </div>
             ) : firmForTabs && (
               <>
-                {/* Firm header card */}
                 <div style={{ ...cardStyle, display:"flex", alignItems:"flex-start", gap:16 }}>
                   <FirmLogo name={selectedFirmName} size={52} />
                   <div style={{ flex:1 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
                       <h2 style={{ ...sans(), fontSize:26, fontWeight:700, margin:0 }}>{selectedFirmName}</h2>
                       <StarButton starred={ce.starred} onClick={() => handleChange({ name:selectedFirmName, ...ce, starred:!ce.starred })} />
-                      {/* Import & Delete actions */}
-                      <div style={{ marginLeft:"auto", display:"flex", gap:8, alignItems:"center" }}>
-                        {saveIndicatorText && (
-                          <span style={{ ...mono(), fontSize: 11, color: saveIndicatorColor }}>{saveIndicatorText}</span>
-                        )}
-                        <button
-                          onClick={() => setShowImport(true)}
-                          title="Import JSON"
-                          style={{ ...btnSmall, display:"flex", alignItems:"center", gap:5 }}
-                        >
-                          ↓ Import JSON
-                        </button>
-                        <button
-                          onClick={() => setShowDeleteConfirm(true)}
-                          title="Delete firm"
-                          style={{ ...btnSmall, color: DANGER, borderColor: DANGER, display:"flex", alignItems:"center", gap:5 }}
-                        >
-                          🗑 Delete
-                        </button>
+                      <div style={{ marginLeft:"auto", display:"flex", gap:10, alignItems:"center" }}>
+                        {saveStatus && <span style={{ ...mono(), fontSize:11, color:saveIndicatorColor }}>{saveStatus==="saving"?"Saving…":saveStatus==="saved"?"Saved ✓":"Save failed"}</span>}
+                        <button onClick={() => handleDelete(selectedFirmName)} style={{ ...btnSmall, color:DANGER, borderColor:DANGER }}>🗑 Delete</button>
                       </div>
                     </div>
                     {currentFirmMeta?.url && <a href={currentFirmMeta.url.startsWith("http")?currentFirmMeta.url:"https://"+currentFirmMeta.url} target="_blank" rel="noreferrer" style={{ ...sans(), fontSize:12, color:ACCENT_WARM, textDecoration:"none" }}>{currentFirmMeta.url} ↗</a>}
@@ -894,7 +757,6 @@ const [search, setSearch] = useState("");
                   </div>
                 </div>
 
-                {/* Key takeaway */}
                 <div style={{ ...cardAltStyle, padding:"16px 20px" }}>
                   <FieldLabel>Key Takeaway</FieldLabel>
                   <input value={ce.keyTakeaway||""} onChange={e => handleChange({ name:selectedFirmName, ...ce, keyTakeaway:e.target.value })} style={inputStyle} placeholder="One sentence — the most important thing about this firm's content strategy" />
@@ -905,7 +767,6 @@ const [search, setSearch] = useState("");
                   </div>
                 </div>
 
-                {/* Sub-tabs */}
                 <div style={{ display:"flex", borderBottom:"2px solid "+BORDER, marginBottom:20 }}>
                   {[{ id:"content", label:"Content & Publishing" },{ id:"social", label:"Social & Video" },{ id:"niche", label:"Niche & Proof" }].map(tab => (
                     <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ ...sans(), fontSize:13, fontWeight:600, padding:"10px 20px", border:"none", cursor:"pointer", borderBottom: activeTab===tab.id?"2px solid "+ACCENT_WARM:"2px solid transparent", background:"transparent", color: activeTab===tab.id?DARK:MUTED, transition:"all 0.15s ease", marginBottom:-2 }}>
