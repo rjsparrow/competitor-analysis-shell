@@ -22,6 +22,18 @@ export default function CompetitorAnalysisShell() {
     }
   };
 
+  const handleUpdateCompetitor = (name, updatedFirm) => {
+  setCompetitors(prev => ({ ...prev, [name]: updatedFirm }));
+};
+
+const handleDeleteCompetitor = (name) => {
+  setCompetitors(prev => {
+    const next = { ...prev };
+    delete next[name];
+    return next;
+  });
+};
+
   const handleImport = async (firmData) => {
     try {
       const response = await fetch('/api/save-competitor', {
@@ -65,15 +77,13 @@ export default function CompetitorAnalysisShell() {
       )}
 
       {(view === "scorecard" || view === "xray" || view === "content") && (
-        <ToolView
-          view={view}
-          competitors={competitors}
-          onBack={() => setView("home")}
-        />
-      )}
-    </div>
-  );
-}
+  <ToolView
+  view={view}
+  competitors={competitors}
+  onBack={() => setView("home")}
+  onUpdateCompetitor={handleUpdateCompetitor}
+  onDeleteFirm={handleDeleteCompetitor}
+/>
 
 // ============================================================================
 // ICON COMPONENTS
@@ -661,14 +671,14 @@ const performImport = async (parsed) => {
 // TOOL VIEW
 // ============================================================================
 
-function ToolView({ view, competitors, onBack }) {
+function ToolView({ view, competitors, onBack, onUpdateCompetitor, onDeleteFirm }) {
   // Render X-Ray Vision component for xray view
   if (view === "xray") {
     return <XRayVision competitors={competitors} onBack={onBack} />;
   }
   // Render Content Engine for content view
   if (view === "content") {
-    return <ContentEngine competitors={competitors} onBack={onBack} />;
+return <ContentEngine competitors={competitors} onBack={onBack} onUpdateCompetitor={onUpdateCompetitor} onDeleteFirm={onDeleteFirm} />;
   }
   // Render Competitor Scorecard for scorecard view
   if (view === "scorecard") {
