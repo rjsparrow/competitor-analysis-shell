@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 
-
 const PEER_GROUPS = ["Healthcare (Large)", "Healthcare (Small)", "Senior Living", "Peer Group"];
 
 // ─── THEME ──────────────────────────────────────────────────────────
@@ -562,23 +561,28 @@ const DeleteConfirmModal = ({ firmName, onClose, onConfirm }) => (
 );
 
 // ─── MAIN — SHELL-COMPATIBLE ──────────────────────────────────────────
-export default function ContentEngine({ competitors, onBack, onUpdateCompetitor, onDeleteFirm }) {
-  // 1. Navigation and Sidebar States
-  const [selectedFirmName, setSelectedFirmName] = useState(null);
-  const [view, setView] = useState("summary");
-  const [activeTab, setActiveTab] = useState("content");
-  const [trayOpen, setTrayOpen] = useState(false);
-  const [search, setSearch] = useState("");
+export default function ContentEngine({ competitors, onBack, onUpdateCompetitor, onDeleteFirm }) 
 
-  // 2. Local state for current firm's CE data (avoids full-page reload on save)
+  
+// 1. Navigation and Sidebar States
+const [selectedFirmName, setSelectedFirmName] = useState(null);
+const [view, setView] = useState("summary");
+const [activeTab, setActiveTab] = useState("content");
+const [trayOpen, setTrayOpen] = useState(false);
+const [search, setSearch] = useState("");
+
+
+  // 2. Local state for current firm's CE data (no page reload needed)
   const [localCe, setLocalCe] = useState(null);
-  const [saveStatus, setSaveStatus] = useState(""); // "" | "saving" | "saved" | "error"
+  const [saveStatus, setSaveStatus] = useState("");
 
-  // 3. Modal states
+  // 3. Import panel state
   const [showImport, setShowImport] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importFirm, setImportFirm] = useState("");
+  const [importError, setImportError] = useState("");
 
-  // When selected firm changes, load its CE data into local state
+  // Load firm data into local state when selection changes
   useEffect(() => {
     if (selectedFirmName && competitors[selectedFirmName]) {
       setLocalCe(competitors[selectedFirmName].contentEngine || emptyContentEngine());
@@ -587,7 +591,7 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
     }
   }, [selectedFirmName]);
 
-  // Debounced auto-save to Redis whenever localCe changes
+  // Debounced auto-save — fires 800ms after last change
   useEffect(() => {
     if (!selectedFirmName || !localCe) return;
     setSaveStatus("saving");
@@ -602,7 +606,6 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
         });
         if (response.ok) {
           setSaveStatus("saved");
-          // Notify parent to update its state in-place (no reload needed)
           onUpdateCompetitor?.(selectedFirmName, { ...firm, contentEngine: localCe });
           setTimeout(() => setSaveStatus(""), 2500);
         } else {
@@ -615,19 +618,63 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
     return () => clearTimeout(timer);
   }, [localCe]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 4. Handle firm selection
+  // Helpers
   const handleSelectFirm = (name) => {
     setSelectedFirmName(name);
     setView("audit");
     setTrayOpen(false);
   };
 
-  // 5. Handle CE data changes — updates local state only; debounced save handles persistence
+  const currentFirmMeta = selectedFirmName ? competitors[selectedFirmName] : null;
+  const ce = localCe || emptyContentEngine();
+  const firmForTabs = selectedFirmName ? { name: selectedFirmName, ...ce } : null;
+
   const handleChange = (updated) => {
     if (!selectedFirmName) return;
     const { name, ...ceData } = updated;
     setLocalCe(ceData);
   };
+
+  // JSON import — merges into existing localCe
+  const handleImport = () => {
+    setImportError("");
+    const targetFirm = importFirm.trim() || selectedFirmName;
+    if (!targetFirm) { setImportError("Enter a firm name or select one from the sidebar first."); return; }
+    try {
+      const parsed = JSON.parse(importText);
+      const base = (targetFirm === selectedFirmName ? localCe : null) || emptyContentEngine();
+      const merged = {
+        ...base, ...parsed,
+        content: { ...base.content, ...(parsed.content || {}) },
+        social: { ...base.social, ...(parsed.social || {}) },
+        niche: { ...base.niche, ...(parsed.niche || {}) },
+      };
+      if (targetFirm === selectedFirmName) {
+        setLocalCe(merged);
+      } else {
+        // Save directly for a different firm
+        const firm = competitors[targetFirm] || {};
+        fetch("/api/save-competitor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...firm, name: targetFirm, contentEngine: merged }) });
+      }
+      setImportText(""); setImportFirm(""); setShowImport(false);
+    } catch (e) {
+      setImportError("Invalid JSON: " + e.message);
+    }
+  };
+
+  // Delete firm
+  const handleDelete = async (firmName) => {
+    if (!window.confirm(`Delete "${firmName}"? This cannot be undone.`)) return;
+    try {
+      await fetch("/api/delete-competitor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: firmName }) });
+      onDeleteFirm?.(firmName);
+      if (selectedFirmName === firmName) { setSelectedFirmName(null); setLocalCe(null); setView("summary"); }
+    } catch (err) { console.error("Delete failed:", err); }
+  };
+
+  const saveIndicatorColor = saveStatus === "saved" ? "#3a8a5c" : saveStatus === "error" ? DANGER : MUTED;
+
+  
 
   // 6. Handle JSON import — merge into existing localCe
   const handleImport = (parsed) => {
@@ -757,6 +804,7 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
 
       {/* --- HEADER --- */}
       <div style={{ background: "#2c2c2c", padding: "32px 32px 28px", color: "#f5f2ed" }}>
+        
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", color: ACCENT_WARM, ...sans(), fontSize:13, fontWeight:600, marginBottom:16, padding:0, display:"flex", alignItems:"center", gap:6 }}>
             ← Home
@@ -764,15 +812,42 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
           <div style={{ ...mono(), fontSize:11, textTransform:"uppercase", letterSpacing:2.5, color: ACCENT_WARM, marginBottom:8 }}>MKM Design Group</div>
           <h1 style={{ ...sans(), fontSize:32, fontWeight:700, margin:0, lineHeight:1.2 }}>Content Engine</h1>
           <p style={{ fontSize:14, color:"#a09a90", marginTop:8, marginBottom:0, maxWidth:600, lineHeight:1.5 }}>Audit competitor content strategies — blogs, social media, thought leadership, and niche positioning.</p>
-          <div style={{ display:"flex", gap:0, marginTop:24 }}>
+        
+         {/* Import Panel */}
+      {showImport && (
+        <div style={{ background: "#1e1e1e", padding: "24px 32px", borderBottom: "2px solid "+ACCENT_WARM }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+            <p style={{ ...sans(), color: "#d6d0c8", fontSize: 13, marginTop: 0 }}>
+              Paste Content Engine JSON for a firm. Use <code>{"{ \"content\": {...}, \"social\": {...}, \"niche\": {...} }"}</code> or the full CE block.
+            </p>
+            <input type="text" value={importFirm} onChange={e => setImportFirm(e.target.value)}
+              placeholder={selectedFirmName ? `Firm name (default: ${selectedFirmName})` : "Firm name (required)"}
+              style={{ width:"100%", padding:"10px 12px", borderRadius:8, border:"1px solid #444", background:"#111", color:"#e0e0e0", ...mono(), fontSize:13, boxSizing:"border-box", marginBottom:10 }} />
+            <textarea value={importText} onChange={e => setImportText(e.target.value)}
+              placeholder={'{ "content": { "cadence": "2x/month", ... }, "social": { ... }, "niche": { ... } }'}
+              style={{ width:"100%", minHeight:140, padding:12, borderRadius:8, border:"1px solid #444", background:"#111", color:"#e0e0e0", ...mono(), fontSize:12, resize:"vertical", boxSizing:"border-box" }} />
+            {importError && <div style={{ ...sans(), color:"#f87171", fontSize:13, marginTop:8 }}>{importError}</div>}
+           
+            
+           <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+                      <h2 style={{ ...sans(), fontSize:26, fontWeight:700, margin:0 }}>{selectedFirmName}</h2>
+                      <StarButton starred={ce.starred} onClick={() => handleChange({ name:selectedFirmName, ...ce, starred:!ce.starred })} />
+                      <div style={{ marginLeft:"auto", display:"flex", gap:10, alignItems:"center" }}>
+                        {saveStatus && <span style={{ ...mono(), fontSize:11, color:saveIndicatorColor }}>{saveStatus==="saving"?"Saving…":saveStatus==="saved"?"Saved ✓":"Save failed"}</span>}
+                        <button onClick={() => handleDelete(selectedFirmName)} style={{ ...btnSmall, color:DANGER, borderColor:DANGER }}>🗑 Delete</button>
+                      </div>
+                    </div>
+          
+        <div style={{ display:"flex", gap:0, marginTop:24, alignItems:"center" }}>
             {[{ key:"summary", label:"Summary" },{ key:"audit", label:"Audit Firms" }].map(tab => (
               <button key={tab.key} onClick={() => setView(tab.key)} style={{ padding:"10px 24px", ...sans(), fontSize:13, fontWeight:600, border:"none", cursor:"pointer", borderBottom: view===tab.key?"2px solid "+ACCENT_WARM:"2px solid transparent", background:"transparent", color: view===tab.key?"#f5f2ed":"#7a756d", transition:"all 0.15s ease" }}>
                 {tab.label}
               </button>
             ))}
+            <button onClick={() => setShowImport(!showImport)} style={{ padding:"10px 24px", ...sans(), fontSize:13, fontWeight:600, border:"none", cursor:"pointer", borderBottom: showImport?"2px solid "+ACCENT_WARM:"2px solid transparent", background:"transparent", color: showImport?"#f5f2ed":"#7a756d", marginLeft:"auto" }}>
+              ⬆ Import JSON
+            </button>
           </div>
-        </div>
-      </div>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 32px 64px" }}>
         {view === "summary" && <SummaryPage competitors={competitors} onSelectFirm={handleSelectFirm} />}
