@@ -1,51 +1,75 @@
 import { useState, useEffect } from "react";
 import XRayVision from "./XRayVision";
-import ContentEngine from "./ContentEngine";
+import ContentEnginePanel from "./ContentEngine";
 import CompetitorScorecard from "./CompetitorScorecard";
 
-export default function ContentEngine({ competitors, onBack, onUpdateCompetitor, onDeleteFirm }) {
-  // 1. Navigation and Sidebar States
+const DANGER = "#a12c7b";
+const MUTED = "#8a8278";
+
+function emptyContentEngine() {
+  return {
+    keyTakeaway: "",
+    content: {},
+    social: {},
+    niche: {},
+  };
+}
+
+export default function CompetitorAnalysisTools({
+  competitors = {},
+  onBack,
+  onUpdateCompetitor,
+  onDeleteFirm,
+}) {
   const [selectedFirmName, setSelectedFirmName] = useState(null);
-  const [view, setView] = useState("summary");
+  const [view, setView] = useState("home");
   const [activeTab, setActiveTab] = useState("content");
   const [trayOpen, setTrayOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-  // 2. Local state for current firm's CE data (no page reload needed)
   const [localCe, setLocalCe] = useState(null);
   const [saveStatus, setSaveStatus] = useState("");
 
-  // 3. Import panel state
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
   const [importFirm, setImportFirm] = useState("");
   const [importError, setImportError] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  // Load firm data into local state when selection changes
   useEffect(() => {
     if (selectedFirmName && competitors[selectedFirmName]) {
       setLocalCe(competitors[selectedFirmName].contentEngine || emptyContentEngine());
     } else {
       setLocalCe(null);
     }
-  }, [selectedFirmName]);
+  }, [selectedFirmName, competitors]);
 
-  // Debounced auto-save — fires 800ms after last change
   useEffect(() => {
     if (!selectedFirmName || !localCe) return;
+
     setSaveStatus("saving");
+
     const timer = setTimeout(async () => {
       try {
         const firm = competitors[selectedFirmName] || {};
-        const updated = { ...firm, name: selectedFirmName, contentEngine: localCe };
+        const updated = {
+          ...firm,
+          name: selectedFirmName,
+          contentEngine: localCe,
+        };
+
         const response = await fetch("/api/save-competitor", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updated),
         });
+
         if (response.ok) {
           setSaveStatus("saved");
-          onUpdateCompetitor?.(selectedFirmName, { ...firm, contentEngine: localCe });
+          onUpdateCompetitor?.(selectedFirmName, {
+            ...firm,
+            contentEngine: localCe,
+          });
           setTimeout(() => setSaveStatus(""), 2500);
         } else {
           setSaveStatus("error");
@@ -54,10 +78,10 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
         setSaveStatus("error");
       }
     }, 800);
-    return () => clearTimeout(timer);
-  }, [localCe]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Helpers
+    return () => clearTimeout(timer);
+  }, [localCe, selectedFirmName, competitors, onUpdateCompetitor]);
+
   const handleSelectFirm = (name) => {
     setSelectedFirmName(name);
     setView("audit");
@@ -74,92 +98,126 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
     setLocalCe(ceData);
   };
 
-  // JSON import — merges into existing localCe
-  const handleImport = () => {
+  const handleJsonImport = () => {
     setImportError("");
     const targetFirm = importFirm.trim() || selectedFirmName;
-    if (!targetFirm) { setImportError("Enter a firm name or select one from the sidebar first."); return; }
+
+    if (!targetFirm) {
+      setImportError("Enter a firm name or select one from the sidebar first.");
+      return;
+    }
+
     try {
       const parsed = JSON.parse(importText);
-      const base = (targetFirm === selectedFirmName ? localCe : null) || emptyContentEngine();
+      const base =
+        (targetFirm === selectedFirmName ? localCe : null) || emptyContentEngine();
+
       const merged = {
-        ...base, ...parsed,
+        ...base,
+        ...parsed,
         content: { ...base.content, ...(parsed.content || {}) },
         social: { ...base.social, ...(parsed.social || {}) },
         niche: { ...base.niche, ...(parsed.niche || {}) },
       };
+
       if (targetFirm === selectedFirmName) {
         setLocalCe(merged);
       } else {
         const firm = competitors[targetFirm] || {};
-        fetch("/api/save-competitor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...firm, name: targetFirm, contentEngine: merged }) });
+        fetch("/api/save-competitor", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...firm,
+            name: targetFirm,
+            contentEngine: merged,
+          }),
+        });
       }
-      setImportText(""); setImportFirm(""); setShowImport(false);
+
+      setImportText("");
+      setImportFirm("");
+      setShowImport(false);
     } catch (e) {
       setImportError("Invalid JSON: " + e.message);
     }
   };
 
-  // Delete firm
   const handleDelete = async (firmName) => {
     if (!window.confirm(`Delete "${firmName}"? This cannot be undone.`)) return;
-    try {
-      await fetch("/api/delete-competitor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: firmName }) });
-      onDeleteFirm?.(firmName);
-      if (selectedFirmName === firmName) { setSelectedFirmName(null); setLocalCe(null); setView("summary"); }
-    } catch (err) { console.error("Delete failed:", err); }
-  };
 
-  const saveIndicatorColor = saveStatus === "saved" ? "#3a8a5c" : saveStatus === "error" ? DANGER : MUTED;
-  const loadCompetitors = async () => {
     try {
-      const response = await fetch('/api/competitors');
-      const data = await response.json();
-      setCompetitors(data);
+      await fetch("/api/delete-competitor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: firmName }),
+      });
+
+      onDeleteFirm?.(firmName);
+
+      if (selectedFirmName === firmName) {
+        setSelectedFirmName(null);
+        setLocalCe(null);
+        setView("summary");
+      }
     } catch (err) {
-      console.log("No existing competitors found");
+      console.error("Delete failed:", err);
     }
   };
+
+  const saveIndicatorColor =
+    saveStatus === "saved"
+      ? "#3a8a5c"
+      : saveStatus === "error"
+      ? DANGER
+      : MUTED;
 
   const handleImport = async (firmData) => {
     try {
-      const response = await fetch('/api/save-competitor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(firmData)
+      const response = await fetch("/api/save-competitor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(firmData),
       });
-      if (!response.ok) throw new Error('Failed to save');
-      await loadCompetitors();
+
+      if (!response.ok) throw new Error("Failed to save");
+
+      onUpdateCompetitor?.(firmData.name, firmData);
       setShowSuccess(true);
     } catch (err) {
-      console.error('Import error:', err);
-      alert('Failed to save competitor data. Please try again.');
+      console.error("Import error:", err);
+      alert("Failed to save competitor data. Please try again.");
     }
   };
 
-  // Update a single competitor in state without a page reload
   const handleUpdateCompetitor = (name, updatedFirm) => {
-    setCompetitors(prev => ({ ...prev, [name]: updatedFirm }));
+    onUpdateCompetitor?.(name, updatedFirm);
   };
 
-  // Remove a competitor from state after deletion
   const handleDeleteCompetitor = (name) => {
-    setCompetitors(prev => {
-      const next = { ...prev };
-      delete next[name];
-      return next;
-    });
+    onDeleteFirm?.(name);
   };
 
-  const firmList = Object.values(competitors).sort((a, b) => a.name.localeCompare(b.name));
+  const firmList = Object.values(competitors).sort((a, b) =>
+    (a.name || "").localeCompare(b.name || "")
+  );
 
   return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#f5f2ed", minHeight: "100vh" }}>
+    <div
+      style={{
+        fontFamily: "'DM Sans', sans-serif",
+        background: "#f5f2ed",
+        minHeight: "100vh",
+      }}
+    >
       <link
         href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap"
         rel="stylesheet"
       />
-      {view === "home" && <HomePage onNavigate={setView} competitorCount={firmList.length} />}
+
+      {view === "home" && (
+        <HomePage onNavigate={setView} competitorCount={firmList.length} />
+      )}
 
       {view === "import" && (
         <ImportPage
@@ -238,25 +296,29 @@ function HomePage({ onNavigate, competitorCount }) {
     {
       id: "scorecard",
       title: "Competitor Scorecard",
-      description: "10-category ratings (1-5 scale), detailed notes per category, SWOT analysis, and side-by-side comparison view across all scored firms.",
+      description:
+        "10-category ratings (1-5 scale), detailed notes per category, SWOT analysis, and side-by-side comparison view across all scored firms.",
       icon: <StarIcon />,
     },
     {
       id: "xray",
       title: "Website X-Ray Vision",
-      description: "Deep website audit covering structure & UX, homepage messaging, about page language, team presentation, portfolio depth, and SEO optimization.",
+      description:
+        "Deep website audit covering structure & UX, homepage messaging, about page language, team presentation, portfolio depth, and SEO optimization.",
       icon: <WebsiteIcon />,
     },
     {
       id: "content",
       title: "Content Engine",
-      description: "Publishing cadence analysis, social media content mix, thought leadership signals, niche positioning proof, and AI search visibility.",
+      description:
+        "Publishing cadence analysis, social media content mix, thought leadership signals, niche positioning proof, and AI search visibility.",
       icon: <LinkedInIcon />,
     },
     {
       id: "import",
       title: "Add New Competitor",
-      description: "Import firm data from competitive analysis research — JSON export plus screenshots (hero, homepage, portfolio, logo).",
+      description:
+        "Import firm data from competitive analysis research — JSON export plus screenshots (hero, homepage, portfolio, logo).",
       accent: true,
     },
   ];
@@ -339,288 +401,4 @@ function HomePage({ onNavigate, competitorCount }) {
 // ============================================================================
 // IMPORT PAGE
 // ============================================================================
-function ImportPage({ onImport, onBack, showSuccess, onCloseSuccess, onAddAnother }) {
-  const [formData, setFormData] = useState({
-    name: "",
-    jsonData: "",
-    images: {
-      hero: null,
-      fullHomepage: null,
-      portfolio: null,
-      logo: null,
-    },
-  });
-  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
-  const [existingFirm, setExistingFirm] = useState(null);
-
-  const handleImageUpload = (key, file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setFormData((prev) => ({
-        ...prev,
-        images: { ...prev.images, [key]: e.target.result },
-      }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const checkDuplicate = async (firmName) => {
-    try {
-      const response = await fetch(`/api/check-competitor?name=${encodeURIComponent(firmName)}`);
-      const data = await response.json();
-      return data.exists;
-    } catch {
-      return false;
-    }
-  };
-
-  const handleSubmit = async () => {
-    try {
-      const parsed = JSON.parse(formData.jsonData);
-      const isDuplicate = await checkDuplicate(formData.name);
-      if (isDuplicate) {
-        setExistingFirm(formData.name);
-        setShowDuplicateWarning(true);
-        return;
-      }
-      await performImport(parsed);
-    } catch (err) {
-      console.error('Error details:', err);
-      alert("Invalid JSON format. Please check your data and try again.");
-    }
-  };
-
-  const performImport = async (parsed) => {
-    const scorecardRoot = parsed.scorecard || parsed;
-    const xrayRoot = parsed.xray || parsed;
-    const contentRoot = parsed.contentEngine || parsed;
-
-    const extractedScores = scorecardRoot.scores || {
-      brand_pos: scorecardRoot.brand_pos || scorecardRoot.brand || scorecardRoot.positioning || 0,
-      market: scorecardRoot.market || scorecardRoot.market_focus || 0,
-      portfolio: scorecardRoot.portfolio || scorecardRoot.project_portfolio || 0,
-      thought: scorecardRoot.thought || scorecardRoot.thought_leadership || 0,
-      services: scorecardRoot.services || scorecardRoot.service_presentation || 0,
-      team: scorecardRoot.team || scorecardRoot.team_presentation || 0,
-      ux: scorecardRoot.ux || scorecardRoot.website_ux || 0,
-      digital: scorecardRoot.digital || scorecardRoot.digital_presence || 0,
-      tone: scorecardRoot.tone || scorecardRoot.tone_voice || 0,
-      cta: scorecardRoot.cta || scorecardRoot.calls_to_action || 0,
-    };
-
-    const firmData = {
-      ...xrayRoot,
-      name: formData.name || parsed.name || "Unknown Firm",
-      peerGroup: formData.peerGroup || parsed.peerGroup || scorecardRoot.peerGroup || "Peer Group",
-      scorecard: {
-        scores: extractedScores,
-        notes: scorecardRoot.notes || {},
-      },
-      contentEngine: {
-        keyTakeaway: contentRoot.keyTakeaway || parsed.keyTakeaway || "",
-        ...contentRoot,
-      },
-      images: {
-        ...(parsed.images || {}),
-        ...formData.images,
-      },
-      importedAt: new Date().toISOString(),
-    };
-
-    await onImport(firmData);
-    setFormData({
-      name: "",
-      jsonData: "",
-      images: { hero: null, fullHomepage: null, portfolio: null, logo: null },
-    });
-  };
-
-  const handleReplaceConfirm = async () => {
-    try {
-      const parsed = JSON.parse(formData.jsonData);
-      await performImport(parsed);
-      setShowDuplicateWarning(false);
-      setExistingFirm(null);
-    } catch (err) {
-      alert("Invalid JSON format. Please check your data and try again.");
-    }
-  };
-
-  return (
-    <div style={{ background: "#f5f2ed", minHeight: "100vh" }}>
-      {/* Header */}
-      <div style={{ background: "#2c2c2c", padding: "32px 32px 28px", color: "#f5f2ed" }}>
-        <div style={{ maxWidth: 800, margin: "0 auto" }}>
-          <button
-            onClick={onBack}
-            style={{
-              background: "none", border: "none", fontFamily: "'DM Sans', sans-serif",
-              fontSize: 13, color: "#b68d40", cursor: "pointer", marginBottom: 16,
-              padding: "0", display: "flex", alignItems: "center", gap: 8,
-            }}
-          >
-            ← Back to Home
-          </button>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: 2.5, color: "#b68d40", marginBottom: 8 }}>
-            MKM Design Group
-          </div>
-          <h1 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 32, fontWeight: 600, margin: "0 0 8px 0", color: "#f5f2ed" }}>
-            Import Competitor Data
-          </h1>
-          <p style={{ fontSize: 14, color: "#a09a90", margin: 0, maxWidth: 560, lineHeight: 1.5 }}>
-            Add a new firm to your competitive analysis toolkit — paste JSON and upload screenshots.
-          </p>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: 800, margin: "0 auto", padding: "32px" }}>
-        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e8e4df", padding: 32 }}>
-          {/* Firm Name */}
-          <div style={{ marginBottom: 24 }}>
-            <label style={{ display: "block", fontWeight: 600, fontSize: 13, color: "#5c5549", marginBottom: 8 }}>
-              Firm Name
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Guidon Design"
-              style={{ width: "100%", padding: "10px 12px", border: "1px solid #d6d0c8", borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 14, boxSizing: "border-box" }}
-            />
-          </div>
-
-          {/* JSON Data */}
-          <div style={{ marginBottom: 32 }}>
-            <label style={{ display: "block", fontWeight: 600, fontSize: 13, color: "#5c5549", marginBottom: 8 }}>
-              JSON Data
-            </label>
-            <textarea
-              value={formData.jsonData}
-              onChange={(e) => setFormData({ ...formData, jsonData: e.target.value })}
-              placeholder='Paste combined JSON here (e.g., { "scorecard": {...}, "xray": {...}, "contentEngine": {...} })'
-              style={{ width: "100%", minHeight: 200, padding: 12, border: "1px solid #d6d0c8", borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 12, resize: "vertical", boxSizing: "border-box" }}
-            />
-          </div>
-
-          {/* Image Uploads */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 32 }}>
-            {[
-              { key: "hero", label: "Hero Image" },
-              { key: "fullHomepage", label: "Full Homepage Screenshot" },
-              { key: "portfolio", label: "Portfolio Page" },
-              { key: "logo", label: "Logo" },
-            ].map((img) => (
-              <div key={img.key}>
-                <label style={{ display: "block", fontWeight: 600, fontSize: 13, color: "#5c5549", marginBottom: 8 }}>
-                  {img.label}
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => e.target.files[0] && handleImageUpload(img.key, e.target.files[0])}
-                  style={{ width: "100%", padding: "8px", border: "1px solid #d6d0c8", borderRadius: 8, fontSize: 13, fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box" }}
-                />
-                {formData.images[img.key] && (
-                  <div style={{ marginTop: 8, fontSize: 12, color: "#5c6d5e", display: "flex", alignItems: "center", gap: 4 }}>
-                    ✓ Uploaded
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Submit */}
-          <button
-            onClick={handleSubmit}
-            disabled={!formData.name || !formData.jsonData}
-            style={{
-              width: "100%", padding: "14px 24px",
-              background: formData.name && formData.jsonData ? "#5c6d5e" : "#d1d5db",
-              color: "#fff", border: "none", borderRadius: 8,
-              fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 600,
-              cursor: formData.name && formData.jsonData ? "pointer" : "not-allowed",
-              transition: "all 0.2s ease",
-            }}
-          >
-            Import Competitor Data
-          </button>
-        </div>
-      </div>
-
-      {/* Duplicate Warning Modal */}
-      {showDuplicateWarning && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 40, maxWidth: 400, textAlign: "center" }}>
-            <div style={{ fontSize: 48, marginBottom: 16, color: "#c17817" }}>⚠</div>
-            <h2 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 24, fontWeight: 600, margin: "0 0 12px 0", color: "#1a1a1a" }}>
-              Firm Already Exists
-            </h2>
-            <p style={{ fontSize: 14, color: "#6b6358", marginBottom: 32 }}>
-              "{existingFirm}" is already in your database. Do you want to replace the existing data?
-            </p>
-            <div style={{ display: "flex", gap: 12 }}>
-              <button
-                onClick={() => { setShowDuplicateWarning(false); setExistingFirm(null); }}
-                style={{ flex: 1, padding: "12px 20px", background: "#fff", color: "#1a1a1a", border: "1px solid #d6d0c8", borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReplaceConfirm}
-                style={{ flex: 1, padding: "12px 20px", background: "#c17817", color: "#fff", border: "none", borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-              >
-                Replace Data
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Success Modal */}
-      {showSuccess && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 40, maxWidth: 400, textAlign: "center" }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>✓</div>
-            <h2 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 24, fontWeight: 600, margin: "0 0 12px 0", color: "#1a1a1a" }}>
-              Success!
-            </h2>
-            <p style={{ fontSize: 14, color: "#6b6358", marginBottom: 32 }}>
-              Competitor data has been imported and saved.
-            </p>
-            <div style={{ display: "flex", gap: 12 }}>
-              <button
-                onClick={onAddAnother}
-                style={{ flex: 1, padding: "12px 20px", background: "#fff", color: "#5c6d5e", border: "1px solid #5c6d5e", borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-              >
-                Add Another
-              </button>
-              <button
-                onClick={() => { onCloseSuccess(); onBack(); }}
-                style={{ flex: 1, padding: "12px 20px", background: "#5c6d5e", color: "#fff", border: "none", borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-              >
-                Back to Home
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-// ============================================================================
-// TOOL VIEW
-// ============================================================================
-function ToolView({ view, competitors, onBack, onUpdateCompetitor, onDeleteFirm }) {
-  if (view === "xray") {
-    return <XRayVision competitors={competitors} onBack={onBack} />;
-  }
-  if (view === "content") {
-    return <ContentEngine competitors={competitors} onBack={onBack} onUpdateCompetitor={onUpdateCompetitor} onDeleteFirm={onDeleteFirm} />;
-  }
-  if (view === "scorecard") {
-    return <CompetitorScorecard competitors={competitors} onBack={onBack} />;
-  }
-  return null;
-}
+function ImportPage({ onImport, onBack, showSuccess, onCloseSuccess, onAddAnother 
