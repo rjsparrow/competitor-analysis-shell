@@ -22,18 +22,6 @@ export default function CompetitorAnalysisShell() {
     }
   };
 
-  const handleUpdateCompetitor = (name, updatedFirm) => {
-  setCompetitors(prev => ({ ...prev, [name]: updatedFirm }));
-};
-
-const handleDeleteCompetitor = (name) => {
-  setCompetitors(prev => {
-    const next = { ...prev };
-    delete next[name];
-    return next;
-  });
-};
-
   const handleImport = async (firmData) => {
     try {
       const response = await fetch('/api/save-competitor', {
@@ -41,15 +29,27 @@ const handleDeleteCompetitor = (name) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(firmData)
       });
-      
       if (!response.ok) throw new Error('Failed to save');
-      
       await loadCompetitors();
       setShowSuccess(true);
     } catch (err) {
       console.error('Import error:', err);
       alert('Failed to save competitor data. Please try again.');
     }
+  };
+
+  // Update a single competitor in state without a page reload
+  const handleUpdateCompetitor = (name, updatedFirm) => {
+    setCompetitors(prev => ({ ...prev, [name]: updatedFirm }));
+  };
+
+  // Remove a competitor from state after deletion
+  const handleDeleteCompetitor = (name) => {
+    setCompetitors(prev => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
   };
 
   const firmList = Object.values(competitors).sort((a, b) => a.name.localeCompare(b.name));
@@ -60,9 +60,8 @@ const handleDeleteCompetitor = (name) => {
         href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap"
         rel="stylesheet"
       />
-
       {view === "home" && <HomePage onNavigate={setView} competitorCount={firmList.length} />}
-      
+
       {view === "import" && (
         <ImportPage
           onImport={handleImport}
@@ -77,18 +76,21 @@ const handleDeleteCompetitor = (name) => {
       )}
 
       {(view === "scorecard" || view === "xray" || view === "content") && (
-  <ToolView
-  view={view}
-  competitors={competitors}
-  onBack={() => setView("home")}
-  onUpdateCompetitor={handleUpdateCompetitor}
-  onDeleteFirm={handleDeleteCompetitor}
-/>
+        <ToolView
+          view={view}
+          competitors={competitors}
+          onBack={() => setView("home")}
+          onUpdateCompetitor={handleUpdateCompetitor}
+          onDeleteFirm={handleDeleteCompetitor}
+        />
+      )}
+    </div>
+  );
+}
 
 // ============================================================================
 // ICON COMPONENTS
 // ============================================================================
-
 function StarIcon() {
   return (
     <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
@@ -132,7 +134,6 @@ function LinkedInIcon() {
 // ============================================================================
 // HOME PAGE
 // ============================================================================
-
 function HomePage({ onNavigate, competitorCount }) {
   const tools = [
     {
@@ -178,7 +179,6 @@ function HomePage({ onNavigate, competitorCount }) {
       <p style={{ fontSize: 16, color: "#8a8278", margin: "0 0 48px 0", textAlign: "center" }}>
         Strategic intelligence across {competitorCount} architecture firms
       </p>
-
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         {tools.map((tool) => (
           <button
@@ -240,7 +240,6 @@ function HomePage({ onNavigate, competitorCount }) {
 // ============================================================================
 // IMPORT PAGE
 // ============================================================================
-
 function ImportPage({ onImport, onBack, showSuccess, onCloseSuccess, onAddAnother }) {
   const [formData, setFormData] = useState({
     name: "",
@@ -276,17 +275,15 @@ function ImportPage({ onImport, onBack, showSuccess, onCloseSuccess, onAddAnothe
     }
   };
 
-const handleSubmit = async () => {
+  const handleSubmit = async () => {
     try {
       const parsed = JSON.parse(formData.jsonData);
       const isDuplicate = await checkDuplicate(formData.name);
-      
       if (isDuplicate) {
         setExistingFirm(formData.name);
         setShowDuplicateWarning(true);
         return;
       }
-
       await performImport(parsed);
     } catch (err) {
       console.error('Error details:', err);
@@ -294,13 +291,11 @@ const handleSubmit = async () => {
     }
   };
 
-const performImport = async (parsed) => {
-    // 1. Smart Root Selection: Handle both nested and flat JSON
+  const performImport = async (parsed) => {
     const scorecardRoot = parsed.scorecard || parsed;
     const xrayRoot = parsed.xray || parsed;
     const contentRoot = parsed.contentEngine || parsed;
 
-    // 2. Intelligent Score Mapping: Look for keys even if AI changed the names
     const extractedScores = scorecardRoot.scores || {
       brand_pos: scorecardRoot.brand_pos || scorecardRoot.brand || scorecardRoot.positioning || 0,
       market: scorecardRoot.market || scorecardRoot.market_focus || 0,
@@ -311,31 +306,29 @@ const performImport = async (parsed) => {
       ux: scorecardRoot.ux || scorecardRoot.website_ux || 0,
       digital: scorecardRoot.digital || scorecardRoot.digital_presence || 0,
       tone: scorecardRoot.tone || scorecardRoot.tone_voice || 0,
-      cta: scorecardRoot.cta || scorecardRoot.calls_to_action || 0
+      cta: scorecardRoot.cta || scorecardRoot.calls_to_action || 0,
     };
 
-    // 3. Build final unified object
     const firmData = {
-      ...xrayRoot, // Spread X-Ray details to top level
+      ...xrayRoot,
       name: formData.name || parsed.name || "Unknown Firm",
       peerGroup: formData.peerGroup || parsed.peerGroup || scorecardRoot.peerGroup || "Peer Group",
       scorecard: {
         scores: extractedScores,
-        notes: scorecardRoot.notes || {}
+        notes: scorecardRoot.notes || {},
       },
       contentEngine: {
         keyTakeaway: contentRoot.keyTakeaway || parsed.keyTakeaway || "",
-        ...contentRoot
+        ...contentRoot,
       },
       images: {
         ...(parsed.images || {}),
-        ...formData.images
+        ...formData.images,
       },
       importedAt: new Date().toISOString(),
     };
 
     await onImport(firmData);
-    
     setFormData({
       name: "",
       jsonData: "",
@@ -362,44 +355,17 @@ const performImport = async (parsed) => {
           <button
             onClick={onBack}
             style={{
-              background: "none",
-              border: "none",
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 13,
-              color: "#b68d40",
-              cursor: "pointer",
-              marginBottom: 16,
-              padding: "0",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
+              background: "none", border: "none", fontFamily: "'DM Sans', sans-serif",
+              fontSize: 13, color: "#b68d40", cursor: "pointer", marginBottom: 16,
+              padding: "0", display: "flex", alignItems: "center", gap: 8,
             }}
           >
             ← Back to Home
           </button>
-
-          <div
-            style={{
-              fontFamily: "'DM Mono', monospace",
-              fontSize: 11,
-              textTransform: "uppercase",
-              letterSpacing: 2.5,
-              color: "#b68d40",
-              marginBottom: 8,
-            }}
-          >
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: 2.5, color: "#b68d40", marginBottom: 8 }}>
             MKM Design Group
           </div>
-
-          <h1
-            style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 32,
-              fontWeight: 600,
-              margin: "0 0 8px 0",
-              color: "#f5f2ed",
-            }}
-          >
+          <h1 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 32, fontWeight: 600, margin: "0 0 8px 0", color: "#f5f2ed" }}>
             Import Competitor Data
           </h1>
           <p style={{ fontSize: 14, color: "#a09a90", margin: 0, maxWidth: 560, lineHeight: 1.5 }}>
@@ -409,7 +375,6 @@ const performImport = async (parsed) => {
       </div>
 
       <div style={{ maxWidth: 800, margin: "0 auto", padding: "32px" }}>
-        {/* Form */}
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e8e4df", padding: 32 }}>
           {/* Firm Name */}
           <div style={{ marginBottom: 24 }}>
@@ -421,15 +386,7 @@ const performImport = async (parsed) => {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="e.g., Guidon Design"
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d6d0c8",
-                borderRadius: 8,
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 14,
-                boxSizing: "border-box",
-              }}
+              style={{ width: "100%", padding: "10px 12px", border: "1px solid #d6d0c8", borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 14, boxSizing: "border-box" }}
             />
           </div>
 
@@ -442,17 +399,7 @@ const performImport = async (parsed) => {
               value={formData.jsonData}
               onChange={(e) => setFormData({ ...formData, jsonData: e.target.value })}
               placeholder='Paste combined JSON here (e.g., { "scorecard": {...}, "xray": {...}, "contentEngine": {...} })'
-              style={{
-                width: "100%",
-                minHeight: 200,
-                padding: 12,
-                border: "1px solid #d6d0c8",
-                borderRadius: 8,
-                fontFamily: "'DM Mono', monospace",
-                fontSize: 12,
-                resize: "vertical",
-                boxSizing: "border-box",
-              }}
+              style={{ width: "100%", minHeight: 200, padding: 12, border: "1px solid #d6d0c8", borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 12, resize: "vertical", boxSizing: "border-box" }}
             />
           </div>
 
@@ -472,15 +419,7 @@ const performImport = async (parsed) => {
                   type="file"
                   accept="image/*"
                   onChange={(e) => e.target.files[0] && handleImageUpload(img.key, e.target.files[0])}
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    border: "1px solid #d6d0c8",
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontFamily: "'DM Sans', sans-serif",
-                    boxSizing: "border-box",
-                  }}
+                  style={{ width: "100%", padding: "8px", border: "1px solid #d6d0c8", borderRadius: 8, fontSize: 13, fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box" }}
                 />
                 {formData.images[img.key] && (
                   <div style={{ marginTop: 8, fontSize: 12, color: "#5c6d5e", display: "flex", alignItems: "center", gap: 4 }}>
@@ -491,20 +430,15 @@ const performImport = async (parsed) => {
             ))}
           </div>
 
-          {/* Submit Button */}
+          {/* Submit */}
           <button
             onClick={handleSubmit}
             disabled={!formData.name || !formData.jsonData}
             style={{
-              width: "100%",
-              padding: "14px 24px",
+              width: "100%", padding: "14px 24px",
               background: formData.name && formData.jsonData ? "#5c6d5e" : "#d1d5db",
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 15,
-              fontWeight: 600,
+              color: "#fff", border: "none", borderRadius: 8,
+              fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 600,
               cursor: formData.name && formData.jsonData ? "pointer" : "not-allowed",
               transition: "all 0.2s ease",
             }}
@@ -516,31 +450,10 @@ const performImport = async (parsed) => {
 
       {/* Duplicate Warning Modal */}
       {showDuplicateWarning && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: 40, maxWidth: 400, textAlign: "center" }}>
             <div style={{ fontSize: 48, marginBottom: 16, color: "#c17817" }}>⚠</div>
-            <h2
-              style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 24,
-                fontWeight: 600,
-                margin: "0 0 12px 0",
-                color: "#1a1a1a",
-              }}
-            >
+            <h2 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 24, fontWeight: 600, margin: "0 0 12px 0", color: "#1a1a1a" }}>
               Firm Already Exists
             </h2>
             <p style={{ fontSize: 14, color: "#6b6358", marginBottom: 32 }}>
@@ -548,39 +461,14 @@ const performImport = async (parsed) => {
             </p>
             <div style={{ display: "flex", gap: 12 }}>
               <button
-                onClick={() => {
-                  setShowDuplicateWarning(false);
-                  setExistingFirm(null);
-                }}
-                style={{
-                  flex: 1,
-                  padding: "12px 20px",
-                  background: "#fff",
-                  color: "#1a1a1a",
-                  border: "1px solid #d6d0c8",
-                  borderRadius: 8,
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
+                onClick={() => { setShowDuplicateWarning(false); setExistingFirm(null); }}
+                style={{ flex: 1, padding: "12px 20px", background: "#fff", color: "#1a1a1a", border: "1px solid #d6d0c8", borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleReplaceConfirm}
-                style={{
-                  flex: 1,
-                  padding: "12px 20px",
-                  background: "#c17817",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 8,
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
+                style={{ flex: 1, padding: "12px 20px", background: "#c17817", color: "#fff", border: "none", borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
               >
                 Replace Data
               </button>
@@ -591,31 +479,10 @@ const performImport = async (parsed) => {
 
       {/* Success Modal */}
       {showSuccess && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: 40, maxWidth: 400, textAlign: "center" }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>✓</div>
-            <h2
-              style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 24,
-                fontWeight: 600,
-                margin: "0 0 12px 0",
-                color: "#1a1a1a",
-              }}
-            >
+            <h2 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 24, fontWeight: 600, margin: "0 0 12px 0", color: "#1a1a1a" }}>
               Success!
             </h2>
             <p style={{ fontSize: 14, color: "#6b6358", marginBottom: 32 }}>
@@ -624,38 +491,13 @@ const performImport = async (parsed) => {
             <div style={{ display: "flex", gap: 12 }}>
               <button
                 onClick={onAddAnother}
-                style={{
-                  flex: 1,
-                  padding: "12px 20px",
-                  background: "#fff",
-                  color: "#5c6d5e",
-                  border: "1px solid #5c6d5e",
-                  borderRadius: 8,
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
+                style={{ flex: 1, padding: "12px 20px", background: "#fff", color: "#5c6d5e", border: "1px solid #5c6d5e", borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
               >
                 Add Another
               </button>
               <button
-                onClick={() => {
-                  onCloseSuccess();
-                  onBack();
-                }}
-                style={{
-                  flex: 1,
-                  padding: "12px 20px",
-                  background: "#5c6d5e",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 8,
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
+                onClick={() => { onCloseSuccess(); onBack(); }}
+                style={{ flex: 1, padding: "12px 20px", background: "#5c6d5e", color: "#fff", border: "none", borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
               >
                 Back to Home
               </button>
@@ -670,20 +512,15 @@ const performImport = async (parsed) => {
 // ============================================================================
 // TOOL VIEW
 // ============================================================================
-
 function ToolView({ view, competitors, onBack, onUpdateCompetitor, onDeleteFirm }) {
-  // Render X-Ray Vision component for xray view
   if (view === "xray") {
     return <XRayVision competitors={competitors} onBack={onBack} />;
   }
-  // Render Content Engine for content view
   if (view === "content") {
-return <ContentEngine competitors={competitors} onBack={onBack} onUpdateCompetitor={onUpdateCompetitor} onDeleteFirm={onDeleteFirm} />;
+    return <ContentEngine competitors={competitors} onBack={onBack} onUpdateCompetitor={onUpdateCompetitor} onDeleteFirm={onDeleteFirm} />;
   }
-  // Render Competitor Scorecard for scorecard view
   if (view === "scorecard") {
     return <CompetitorScorecard competitors={competitors} onBack={onBack} />;
   }
-
-return null;
+  return null;
 }
