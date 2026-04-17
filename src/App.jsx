@@ -3,7 +3,7 @@ import XRayVision from "./XRayVision";
 import ContentEngine from "./ContentEngine";
 import CompetitorScorecard from "./CompetitorScorecard";
 
-export default function CompetitorAnalysisShell() {
+export default function ContentEngine({ competitors, onBack, onUpdateCompetitor, onDeleteFirm }) {
   const [view, setView] = useState("home");
   const [competitors, setCompetitors] = useState({});
   const [showSuccess, setShowSuccess] = useState(false);
