@@ -4,14 +4,113 @@ import ContentEngine from "./ContentEngine";
 import CompetitorScorecard from "./CompetitorScorecard";
 
 export default function ContentEngine({ competitors, onBack, onUpdateCompetitor, onDeleteFirm }) {
-  const [view, setView] = useState("home");
-  const [competitors, setCompetitors] = useState({});
-  const [showSuccess, setShowSuccess] = useState(false);
+  // 1. Navigation and Sidebar States
+  const [selectedFirmName, setSelectedFirmName] = useState(null);
+  const [view, setView] = useState("summary");
+  const [activeTab, setActiveTab] = useState("content");
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
+  // 2. Local state for current firm's CE data (no page reload needed)
+  const [localCe, setLocalCe] = useState(null);
+  const [saveStatus, setSaveStatus] = useState("");
+
+  // 3. Import panel state
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importFirm, setImportFirm] = useState("");
+  const [importError, setImportError] = useState("");
+
+  // Load firm data into local state when selection changes
   useEffect(() => {
-    loadCompetitors();
-  }, []);
+    if (selectedFirmName && competitors[selectedFirmName]) {
+      setLocalCe(competitors[selectedFirmName].contentEngine || emptyContentEngine());
+    } else {
+      setLocalCe(null);
+    }
+  }, [selectedFirmName]);
 
+  // Debounced auto-save — fires 800ms after last change
+  useEffect(() => {
+    if (!selectedFirmName || !localCe) return;
+    setSaveStatus("saving");
+    const timer = setTimeout(async () => {
+      try {
+        const firm = competitors[selectedFirmName] || {};
+        const updated = { ...firm, name: selectedFirmName, contentEngine: localCe };
+        const response = await fetch("/api/save-competitor", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updated),
+        });
+        if (response.ok) {
+          setSaveStatus("saved");
+          onUpdateCompetitor?.(selectedFirmName, { ...firm, contentEngine: localCe });
+          setTimeout(() => setSaveStatus(""), 2500);
+        } else {
+          setSaveStatus("error");
+        }
+      } catch {
+        setSaveStatus("error");
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [localCe]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Helpers
+  const handleSelectFirm = (name) => {
+    setSelectedFirmName(name);
+    setView("audit");
+    setTrayOpen(false);
+  };
+
+  const currentFirmMeta = selectedFirmName ? competitors[selectedFirmName] : null;
+  const ce = localCe || emptyContentEngine();
+  const firmForTabs = selectedFirmName ? { name: selectedFirmName, ...ce } : null;
+
+  const handleChange = (updated) => {
+    if (!selectedFirmName) return;
+    const { name, ...ceData } = updated;
+    setLocalCe(ceData);
+  };
+
+  // JSON import — merges into existing localCe
+  const handleImport = () => {
+    setImportError("");
+    const targetFirm = importFirm.trim() || selectedFirmName;
+    if (!targetFirm) { setImportError("Enter a firm name or select one from the sidebar first."); return; }
+    try {
+      const parsed = JSON.parse(importText);
+      const base = (targetFirm === selectedFirmName ? localCe : null) || emptyContentEngine();
+      const merged = {
+        ...base, ...parsed,
+        content: { ...base.content, ...(parsed.content || {}) },
+        social: { ...base.social, ...(parsed.social || {}) },
+        niche: { ...base.niche, ...(parsed.niche || {}) },
+      };
+      if (targetFirm === selectedFirmName) {
+        setLocalCe(merged);
+      } else {
+        const firm = competitors[targetFirm] || {};
+        fetch("/api/save-competitor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...firm, name: targetFirm, contentEngine: merged }) });
+      }
+      setImportText(""); setImportFirm(""); setShowImport(false);
+    } catch (e) {
+      setImportError("Invalid JSON: " + e.message);
+    }
+  };
+
+  // Delete firm
+  const handleDelete = async (firmName) => {
+    if (!window.confirm(`Delete "${firmName}"? This cannot be undone.`)) return;
+    try {
+      await fetch("/api/delete-competitor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: firmName }) });
+      onDeleteFirm?.(firmName);
+      if (selectedFirmName === firmName) { setSelectedFirmName(null); setLocalCe(null); setView("summary"); }
+    } catch (err) { console.error("Delete failed:", err); }
+  };
+
+  const saveIndicatorColor = saveStatus === "saved" ? "#3a8a5c" : saveStatus === "error" ? DANGER : MUTED;
   const loadCompetitors = async () => {
     try {
       const response = await fetch('/api/competitors');
