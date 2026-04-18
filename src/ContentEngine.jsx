@@ -535,8 +535,7 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
     setSaveStatus("saving");
     const timer = setTimeout(async () => {
       try {
-        const firm = competitors[selectedFirmName] || {};
-        const updated = { ...firm, name: selectedFirmName, contentEngine: localCe };
+        const updated = { name: selectedFirmName, contentEngine: localCe };
         const response = await fetch("/api/save-competitor", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -544,6 +543,7 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
         });
         if (response.ok) {
           setSaveStatus("saved");
+          const firm = competitors[selectedFirmName] || {};
           onUpdateCompetitor?.(selectedFirmName, { ...firm, contentEngine: localCe });
           setTimeout(() => setSaveStatus(""), 2500);
         } else {
