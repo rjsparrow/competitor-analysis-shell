@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 
 const CATEGORIES = [
   { id: "brand", label: "Brand & Positioning", description: "Tagline, mission, value prop, niche vs. generalist positioning, 'why us' clarity" },
@@ -90,6 +90,7 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
   const [importText, setImportText] = useState("");
   const [importFirm, setImportFirm] = useState("");
   const [importError, setImportError] = useState("");
+  const debounceTimers = useRef({});
 
   useEffect(() => {
     if (competitors && Object.keys(competitors).length > 0) {
@@ -111,7 +112,7 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
   }, [localData]);
 
   const getFirmData = useCallback((firmName) => {
-    return localData?.[firmName]?.scorecard || { scores: {}, notes: {} };
+    return localData?.[firmName]?.scorecard || { scores: {}, notes: {}, swot: {} };
   }, [localData]);
 
   const updateScore = async (firm, catId, value) => {
@@ -157,6 +158,46 @@ const updateNotes = async (firm, catId, value) => {
     }, 600);
   };
 
+  const updateSwot = async (firm, field, value) => {
+    const updatedFirmData = {
+      ...localData[firm],
+      scorecard: {
+        ...localData[firm]?.scorecard,
+        swot: { ...localData[firm]?.scorecard?.swot, [field]: value }
+      }
+    };
+    setLocalData(prev => ({ ...prev, [firm]: updatedFirmData }));
+    clearTimeout(debounceTimers.current[`${firm}-swot-${field}`]);
+    debounceTimers.current[`${firm}-swot-${field}`] = setTimeout(async () => {
+      try {
+        await fetch('/api/save-competitor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: firm, ...updatedFirmData })
+        });
+      } catch (err) {
+        console.error('Failed to save SWOT:', err);
+      }
+    }, 600);
+  };
+
+  const updateGeneralNotes = async (firm, value) => {
+    const updatedFirmData = { ...localData[firm], generalNotes: value };
+    setLocalData(prev => ({ ...prev, [firm]: updatedFirmData }));
+    clearTimeout(debounceTimers.current[`${firm}-generalNotes`]);
+    debounceTimers.current[`${firm}-generalNotes`] = setTimeout(async () => {
+      try {
+        await fetch('/api/save-competitor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: firm, ...updatedFirmData })
+        });
+      } catch (err) {
+        console.error('Failed to save notes:', err);
+      }
+    }, 600);
+  };
+
   // Import scorecard-only JSON for a specific firm
   const handleImport = async () => {
     setImportError("");
@@ -171,13 +212,14 @@ const updateNotes = async (firm, catId, value) => {
         setImportError("Expected a JSON object.");
         return;
       }
-      // Accept either { scores, notes } directly or { scorecard: { scores, notes } }
+      // Accept either { scores, notes, swot } directly or { scorecard: { scores, notes, swot } }
       const scorecardData = parsed.scorecard || parsed;
       const scores = scorecardData.scores || {};
       const notes = scorecardData.notes || {};
+      const swot = scorecardData.swot || {};
       const updatedFirmData = {
         ...localData[targetFirm],
-        scorecard: { scores, notes }
+        scorecard: { scores, notes, swot }
       };
       setLocalData(prev => ({ ...prev, [targetFirm]: updatedFirmData }));
       setImportText("");
@@ -243,7 +285,7 @@ const updateNotes = async (firm, catId, value) => {
         <div style={{ background: "#1e1e1e", padding: "24px 32px", borderBottom: "2px solid #b68d40" }}>
           <div style={{ maxWidth: 960, margin: "0 auto" }}>
             <p style={{ color: "#d6d0c8", fontSize: 13, marginTop: 0 }}>
-              Paste scorecard JSON for a single firm. Paste <code>{"{ \"scores\": {...}, \"notes\": {...} }"}</code> or the full scorecard block.
+              Paste scorecard JSON for a single firm. Accepts <code>{"{ \"scores\": {...}, \"notes\": {...}, \"swot\": {...} }"}</code> or a full scorecard block.
             </p>
             <input
               type="text"
@@ -321,19 +363,56 @@ const updateNotes = async (firm, catId, value) => {
             {/* Main Content */}
             <div style={{ flex: 1 }}>
               {selectedFirm ? (
-                <div style={{ background: "#fff", padding: 24, borderRadius: 12, border: "1px solid #e8e4df" }}>
-                  <h2 style={{ margin: "0 0 16px 0" }}>{selectedFirm}</h2>
-                  {CATEGORIES.map(cat => (
-                    <CategoryRow
-                      key={cat.id}
-                      category={cat}
-                      score={getFirmData(selectedFirm)?.scores?.[cat.id] || 0}
-                      notes={getFirmData(selectedFirm)?.notes?.[cat.id] || ""}
-                      onScoreChange={(v) => updateScore(selectedFirm, cat.id, v)}
-                      onNotesChange={(v) => updateNotes(selectedFirm, cat.id, v)}
-                      accentColor={ACCENT}
+                <div>
+                  {/* General Notes */}
+                  <div style={{ background: "#fff", padding: 20, borderRadius: 12, border: "1px solid #e8e4df", marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "#b68d40", marginBottom: 10 }}>Notes</div>
+                    <textarea
+                      value={localData[selectedFirm]?.generalNotes || ""}
+                      onChange={e => updateGeneralNotes(selectedFirm, e.target.value)}
+                      placeholder="Things to flag, follow up on, or highlight across tools…"
+                      style={{ width: "100%", minHeight: 80, padding: 12, border: "1px solid #e0dbd4", borderRadius: 8, fontSize: 13, background: "#fdfcfb", resize: "vertical", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", color: "#1a1a1a" }}
                     />
-                  ))}
+                  </div>
+
+                  {/* Scorecard */}
+                  <div style={{ background: "#fff", padding: 24, borderRadius: 12, border: "1px solid #e8e4df", marginBottom: 16 }}>
+                    <h2 style={{ margin: "0 0 16px 0" }}>{selectedFirm}</h2>
+                    {CATEGORIES.map(cat => (
+                      <CategoryRow
+                        key={cat.id}
+                        category={cat}
+                        score={getFirmData(selectedFirm)?.scores?.[cat.id] || 0}
+                        notes={getFirmData(selectedFirm)?.notes?.[cat.id] || ""}
+                        onScoreChange={(v) => updateScore(selectedFirm, cat.id, v)}
+                        onNotesChange={(v) => updateNotes(selectedFirm, cat.id, v)}
+                        accentColor={ACCENT}
+                      />
+                    ))}
+                  </div>
+
+                  {/* SWOT */}
+                  <div style={{ background: "#fff", padding: 24, borderRadius: 12, border: "1px solid #e8e4df" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "#b68d40", marginBottom: 20 }}>SWOT Analysis</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                      {[
+                        { key: "Strengths", label: "Strengths", color: "#2d6a4f", bg: "#f0faf5" },
+                        { key: "Weaknesses", label: "Weaknesses", color: "#a4433a", bg: "#fdf4f4" },
+                        { key: "Opportunities", label: "Opportunities", color: "#004368", bg: "#f0f5fa" },
+                        { key: "Threats", label: "Threats", color: "#c17817", bg: "#fdf8f0" },
+                      ].map(({ key, label, color, bg }) => (
+                        <div key={key}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>{label}</div>
+                          <textarea
+                            value={getFirmData(selectedFirm)?.swot?.[key] || ""}
+                            onChange={e => updateSwot(selectedFirm, key, e.target.value)}
+                            placeholder={`${label}…`}
+                            style={{ width: "100%", minHeight: 100, padding: 12, border: `1px solid ${color}30`, borderRadius: 8, fontSize: 13, background: bg, resize: "vertical", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", color: "#1a1a1a", lineHeight: 1.5 }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div style={{ padding: 48, textAlign: "center", color: "#8a8278" }}>
