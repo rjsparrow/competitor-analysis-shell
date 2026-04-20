@@ -537,10 +537,12 @@ const updateFirm = useCallback((key, value) => {
   const now = new Date().toISOString().split("T")[0];
   setFirms(p => {
     const updated = {...p, [sel]: {...p[sel], [key]: value, lastReviewed: now}};
+    // Strip fields owned by other tools — never let X-Ray overwrite scorecard or contentEngine
+    const { scorecard, contentEngine, ...safeToSave } = updated[sel];
     fetch('/api/save-competitor', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({name: p[sel]?.name || sel, ...updated[sel]})
+      body: JSON.stringify({name: p[sel]?.name || sel, ...safeToSave})
     }).catch(err => console.error('Failed to save:', err));
     return updated;
   });
@@ -581,6 +583,12 @@ const updateImage = useCallback((slot, data) => {
       domainAuthority:"",monthlyTraffic:"",topTrafficSource:"",bounceRate:"",topKeywords:"",referralSources:"",pageTitle:"",metaDescription:"",seoNotes:""};
     setFirms(p=>{const next={...p,[id]:firm}; sSet(SK,next); return next;}); setOrder(p=>{const next=[...p,id]; sSet(SO,next); return next;}); setImages(p=>({...p,[id]:{}}));
     setSel(id); setTab(null); setTrayOpen(false); setNewName(""); setNewUrl(""); setNewGroup(PEER_GROUPS[0]);
+    // Save to Redis immediately so firm persists on refresh
+    fetch('/api/save-competitor', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ name: newName.trim(), url: newUrl.trim(), peerGroup: newGroup, status: "Not Started" })
+    }).catch(err => console.error('Failed to save new firm:', err));
   };
   
 const updateFirmXray = (data, targetId, newFirmName) => {
@@ -589,7 +597,9 @@ const updateFirmXray = (data, targetId, newFirmName) => {
   const isExisting = !!firms[id];
   const existing = isExisting ? firms[id] : {};
   const { scorecard, contentEngine, ...xrayData } = data;
-  const merged = { ...existing, ...xrayData, id, name: firmName };
+  // Only keep xray-owned fields from existing — never carry scorecard/contentEngine forward
+  const { scorecard: _sc, contentEngine: _ce, ...existingXray } = existing;
+  const merged = { ...existingXray, ...xrayData, id, name: firmName };
   setFirms(p => { const next = {...p, [id]: merged}; sSet(SK, next); return next; });
   if (!isExisting) setOrder(p => { const next = [...p, id]; sSet(SO, next); return next; });
   setImages(p => ({...p, [id]: p[id] || {}}));
@@ -784,9 +794,14 @@ const deleteFirm = (id) => {
               </div>
             </div>
           </div>
-          {/* Notes */}
+          {/* General Notes (shared across all tools) */}
+          <div style={{...cardSt, borderLeft: `3px solid ${AW}`}}>
+            <SL>Notes</SL>
+            <textarea value={cur.generalNotes||""} onChange={e=>updateFirm("generalNotes",e.target.value)} placeholder="Things to flag, follow up on, or highlight across tools…" style={txSt}/>
+          </div>
+          {/* Notes & Observations (X-Ray specific) */}
           <div style={cardSt}>
-            <SL>Notes & Observations</SL>
+            <SL>X-Ray Notes & Observations</SL>
             <textarea value={cur.overviewNotes||""} onChange={e=>updateFirm("overviewNotes",e.target.value)} placeholder="General observations, strategic notes, things to watch..." style={txSt}/>
           </div>
           {/* Tab Buttons */}
