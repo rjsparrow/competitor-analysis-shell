@@ -488,6 +488,7 @@ export default function XRayVision({ competitors, onBack }) {
   const [search,setSearch] = useState("");
   const [loaded,setLoaded] = useState(false);
   const [trayOpen,setTrayOpen] = useState(false);
+  const [notesSaveStatus,setNotesSaveStatus] = useState("");
   const [images,setImages] = useState({}); // {firmId: {slot: dataUrl}}
   const [newName,setNewName] = useState("");
   const [newUrl,setNewUrl] = useState("");
@@ -569,6 +570,24 @@ const updateImage = useCallback((slot, data) => {
     })
     .catch(err => console.error('Failed to save image:', err));
 }, [sel]);
+
+  const saveGeneralNotes = async () => {
+    if (!sel) return;
+    setNotesSaveStatus("saving");
+    const { scorecard, contentEngine, ...safeData } = firms[sel] || {};
+    try {
+      await fetch('/api/save-competitor', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name: firms[sel]?.name || sel, generalNotes: safeData.generalNotes || "" })
+      });
+      setNotesSaveStatus("saved");
+      setTimeout(() => setNotesSaveStatus(""), 2500);
+    } catch (err) {
+      console.error('Failed to save notes:', err);
+      setNotesSaveStatus("");
+    }
+  };
 
   const addFirm = () => {
     if(!newName.trim()) return;
@@ -797,7 +816,22 @@ const deleteFirm = (id) => {
           {/* General Notes (shared across all tools) */}
           <div style={{...cardSt, borderLeft: `3px solid ${AW}`}}>
             <SL>Notes</SL>
-            <textarea value={cur.generalNotes||""} onChange={e=>updateFirm("generalNotes",e.target.value)} placeholder="Things to flag, follow up on, or highlight across tools…" style={txSt}/>
+            <textarea
+              value={cur.generalNotes||""}
+              onChange={e => setFirms(p => ({...p, [sel]: {...p[sel], generalNotes: e.target.value}}))}
+              placeholder="Things to flag, follow up on, or highlight across tools…"
+              style={txSt}
+            />
+            <div style={{display:"flex", alignItems:"center", gap:12, marginTop:8}}>
+              <button
+                onClick={saveGeneralNotes}
+                disabled={notesSaveStatus === "saving"}
+                style={{...s(), padding:"6px 18px", background:AW, color:"#fff", border:"none", borderRadius:6, fontSize:13, fontWeight:600, cursor:"pointer"}}
+              >
+                {notesSaveStatus === "saving" ? "Saving…" : "Save Notes"}
+              </button>
+              {notesSaveStatus === "saved" && <span style={{...s(), fontSize:12, color:"#2d6a4f"}}>✓ Saved</span>}
+            </div>
           </div>
           {/* Notes & Observations (X-Ray specific) */}
           <div style={cardSt}>
