@@ -84,12 +84,14 @@ const CategoryRow = ({ category, score, notes, onScoreChange, onNotesChange, acc
 export default function CompetitorScorecard({ competitors = {}, onBack }) {
   const [localData, setLocalData] = useState({});
   const [selectedFirm, setSelectedFirm] = useState(null);
+  const [firmTab, setFirmTab] = useState("scorecard"); // "scorecard" | "swot"
   const [view, setView] = useState("score");
   const [search, setSearch] = useState("");
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
   const [importFirm, setImportFirm] = useState("");
   const [importError, setImportError] = useState("");
+  const [notesSaveStatus, setNotesSaveStatus] = useState(""); // "" | "saving" | "saved"
   const debounceTimers = useRef({});
 
   useEffect(() => {
@@ -181,21 +183,25 @@ const updateNotes = async (firm, catId, value) => {
     }, 600);
   };
 
-  const updateGeneralNotes = async (firm, value) => {
-    const updatedFirmData = { ...localData[firm], generalNotes: value };
-    setLocalData(prev => ({ ...prev, [firm]: updatedFirmData }));
-    clearTimeout(debounceTimers.current[`${firm}-generalNotes`]);
-    debounceTimers.current[`${firm}-generalNotes`] = setTimeout(async () => {
-      try {
-        await fetch('/api/save-competitor', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: firm, ...updatedFirmData })
-        });
-      } catch (err) {
-        console.error('Failed to save notes:', err);
-      }
-    }, 600);
+  const updateGeneralNotes = (firm, value) => {
+    setLocalData(prev => ({ ...prev, [firm]: { ...prev[firm], generalNotes: value } }));
+  };
+
+  const saveGeneralNotes = async (firm) => {
+    setNotesSaveStatus("saving");
+    const updatedFirmData = { ...localData[firm] };
+    try {
+      await fetch('/api/save-competitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: firm, ...updatedFirmData })
+      });
+      setNotesSaveStatus("saved");
+      setTimeout(() => setNotesSaveStatus(""), 2500);
+    } catch (err) {
+      console.error('Failed to save notes:', err);
+      setNotesSaveStatus("");
+    }
   };
 
   // Import scorecard-only JSON for a specific firm
@@ -331,7 +337,7 @@ const updateNotes = async (firm, catId, value) => {
                       // FIX: wrapper div with trashcan button alongside firm selector
                       <div key={firm} style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 2 }}>
                         <button
-                          onClick={() => setSelectedFirm(firm)}
+                          onClick={() => { setSelectedFirm(firm); setFirmTab("scorecard"); }}
                           style={{
                             flex: 1, textAlign: "left", padding: "8px", borderRadius: 6,
                             border: "none", background: selectedFirm === firm ? ACCENT : "transparent",
@@ -364,54 +370,88 @@ const updateNotes = async (firm, catId, value) => {
             <div style={{ flex: 1 }}>
               {selectedFirm ? (
                 <div>
-                  {/* General Notes */}
-                  <div style={{ background: "#fff", padding: 20, borderRadius: 12, border: "1px solid #e8e4df", marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "#b68d40", marginBottom: 10 }}>Notes</div>
-                    <textarea
-                      value={localData[selectedFirm]?.generalNotes || ""}
-                      onChange={e => updateGeneralNotes(selectedFirm, e.target.value)}
-                      placeholder="Things to flag, follow up on, or highlight across tools…"
-                      style={{ width: "100%", minHeight: 80, padding: 12, border: "1px solid #e0dbd4", borderRadius: 8, fontSize: 13, background: "#fdfcfb", resize: "vertical", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", color: "#1a1a1a" }}
-                    />
-                  </div>
-
-                  {/* Scorecard */}
-                  <div style={{ background: "#fff", padding: 24, borderRadius: 12, border: "1px solid #e8e4df", marginBottom: 16 }}>
-                    <h2 style={{ margin: "0 0 16px 0" }}>{selectedFirm}</h2>
-                    {CATEGORIES.map(cat => (
-                      <CategoryRow
-                        key={cat.id}
-                        category={cat}
-                        score={getFirmData(selectedFirm)?.scores?.[cat.id] || 0}
-                        notes={getFirmData(selectedFirm)?.notes?.[cat.id] || ""}
-                        onScoreChange={(v) => updateScore(selectedFirm, cat.id, v)}
-                        onNotesChange={(v) => updateNotes(selectedFirm, cat.id, v)}
-                        accentColor={ACCENT}
-                      />
-                    ))}
-                  </div>
-
-                  {/* SWOT */}
-                  <div style={{ background: "#fff", padding: 24, borderRadius: 12, border: "1px solid #e8e4df" }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "#b68d40", marginBottom: 20 }}>SWOT Analysis</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                      {[
-                        { key: "Strengths", label: "Strengths", color: "#2d6a4f", bg: "#f0faf5" },
-                        { key: "Weaknesses", label: "Weaknesses", color: "#a4433a", bg: "#fdf4f4" },
-                        { key: "Opportunities", label: "Opportunities", color: "#004368", bg: "#f0f5fa" },
-                        { key: "Threats", label: "Threats", color: "#c17817", bg: "#fdf8f0" },
-                      ].map(({ key, label, color, bg }) => (
-                        <div key={key}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>{label}</div>
-                          <textarea
-                            value={getFirmData(selectedFirm)?.swot?.[key] || ""}
-                            onChange={e => updateSwot(selectedFirm, key, e.target.value)}
-                            placeholder={`${label}…`}
-                            style={{ width: "100%", minHeight: 100, padding: 12, border: `1px solid ${color}30`, borderRadius: 8, fontSize: 13, background: bg, resize: "vertical", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", color: "#1a1a1a", lineHeight: 1.5 }}
-                          />
-                        </div>
-                      ))}
+                  {/* Firm header + tabs */}
+                  <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e8e4df", marginBottom: 16, overflow: "hidden" }}>
+                    <div style={{ padding: "20px 24px 0" }}>
+                      <h2 style={{ margin: "0 0 16px 0", fontSize: 22 }}>{selectedFirm}</h2>
+                      <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e8e4df" }}>
+                        {[{ id: "scorecard", label: "Scorecard" }, { id: "swot", label: "SWOT" }].map(t => (
+                          <button
+                            key={t.id}
+                            onClick={() => setFirmTab(t.id)}
+                            style={{
+                              padding: "10px 20px", border: "none", background: "transparent", cursor: "pointer",
+                              fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
+                              color: firmTab === t.id ? "#1a1a1a" : "#8a8278",
+                              borderBottom: firmTab === t.id ? "2px solid #b68d40" : "2px solid transparent",
+                              marginBottom: -2, transition: "all 0.15s ease",
+                            }}
+                          >{t.label}</button>
+                        ))}
+                      </div>
                     </div>
+
+                    {/* Scorecard tab */}
+                    {firmTab === "scorecard" && (
+                      <div style={{ padding: 24 }}>
+                        {CATEGORIES.map(cat => (
+                          <CategoryRow
+                            key={cat.id}
+                            category={cat}
+                            score={getFirmData(selectedFirm)?.scores?.[cat.id] || 0}
+                            notes={getFirmData(selectedFirm)?.notes?.[cat.id] || ""}
+                            onScoreChange={(v) => updateScore(selectedFirm, cat.id, v)}
+                            onNotesChange={(v) => updateNotes(selectedFirm, cat.id, v)}
+                            accentColor={ACCENT}
+                          />
+                        ))}
+
+                        {/* Notes at the bottom of scorecard */}
+                        <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid #e8e4df" }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "#b68d40", marginBottom: 10 }}>Notes</div>
+                          <textarea
+                            value={localData[selectedFirm]?.generalNotes || ""}
+                            onChange={e => updateGeneralNotes(selectedFirm, e.target.value)}
+                            placeholder="Things to flag, follow up on, or highlight across tools…"
+                            style={{ width: "100%", minHeight: 96, padding: 12, border: "1px solid #e0dbd4", borderRadius: 8, fontSize: 13, background: "#fdfcfb", resize: "vertical", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", color: "#1a1a1a" }}
+                          />
+                          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
+                            <button
+                              onClick={() => saveGeneralNotes(selectedFirm)}
+                              disabled={notesSaveStatus === "saving"}
+                              style={{ padding: "6px 18px", background: ACCENT_WARM, color: "#fff", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+                            >
+                              {notesSaveStatus === "saving" ? "Saving…" : "Save Notes"}
+                            </button>
+                            {notesSaveStatus === "saved" && <span style={{ fontSize: 12, color: "#2d6a4f", fontFamily: "'DM Sans', sans-serif" }}>✓ Saved</span>}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SWOT tab */}
+                    {firmTab === "swot" && (
+                      <div style={{ padding: 24 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                          {[
+                            { key: "Strengths", label: "Strengths", color: "#2d6a4f", bg: "#f0faf5" },
+                            { key: "Weaknesses", label: "Weaknesses", color: "#a4433a", bg: "#fdf4f4" },
+                            { key: "Opportunities", label: "Opportunities", color: "#004368", bg: "#f0f5fa" },
+                            { key: "Threats", label: "Threats", color: "#c17817", bg: "#fdf8f0" },
+                          ].map(({ key, label, color, bg }) => (
+                            <div key={key}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>{label}</div>
+                              <textarea
+                                value={getFirmData(selectedFirm)?.swot?.[key] || ""}
+                                onChange={e => updateSwot(selectedFirm, key, e.target.value)}
+                                placeholder={`${label}…`}
+                                style={{ width: "100%", minHeight: 120, padding: 12, border: `1px solid ${color}30`, borderRadius: 8, fontSize: 13, background: bg, resize: "vertical", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", color: "#1a1a1a", lineHeight: 1.5 }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
