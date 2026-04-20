@@ -118,41 +118,36 @@ export default function CompetitorScorecard({ competitors = {}, onBack }) {
   }, [localData]);
 
   const updateScore = async (firm, catId, value) => {
-    const updatedFirmData = {
-      ...localData[firm],
-      scorecard: {
-        ...localData[firm]?.scorecard,
-        scores: { ...localData[firm]?.scorecard?.scores, [catId]: value }
-      }
+    const newScorecard = {
+      ...localData[firm]?.scorecard,
+      scores: { ...localData[firm]?.scorecard?.scores, [catId]: value }
     };
-    setLocalData(prev => ({ ...prev, [firm]: updatedFirmData }));
+    setLocalData(prev => ({ ...prev, [firm]: { ...prev[firm], scorecard: newScorecard } }));
     try {
+      // Only send scorecard fields — never touch xray or contentEngine data
       await fetch('/api/save-competitor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: firm, ...updatedFirmData })
+        body: JSON.stringify({ name: firm, scorecard: newScorecard })
       });
     } catch (err) {
       console.error('Failed to save score:', err);
     }
   };
 
-const updateNotes = async (firm, catId, value) => {
-    const updatedFirmData = {
-      ...localData[firm],
-      scorecard: {
-        ...localData[firm]?.scorecard,
-        notes: { ...localData[firm]?.scorecard?.notes, [catId]: value }
-      }
+  const updateNotes = async (firm, catId, value) => {
+    const newScorecard = {
+      ...localData[firm]?.scorecard,
+      notes: { ...localData[firm]?.scorecard?.notes, [catId]: value }
     };
-    setLocalData(prev => ({ ...prev, [firm]: updatedFirmData }));
+    setLocalData(prev => ({ ...prev, [firm]: { ...prev[firm], scorecard: newScorecard } }));
     clearTimeout(debounceTimers.current[`${firm}-${catId}`]);
     debounceTimers.current[`${firm}-${catId}`] = setTimeout(async () => {
       try {
         await fetch('/api/save-competitor', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: firm, ...updatedFirmData })
+          body: JSON.stringify({ name: firm, scorecard: newScorecard })
         });
       } catch (err) {
         console.error('Failed to save note:', err);
@@ -161,21 +156,18 @@ const updateNotes = async (firm, catId, value) => {
   };
 
   const updateSwot = async (firm, field, value) => {
-    const updatedFirmData = {
-      ...localData[firm],
-      scorecard: {
-        ...localData[firm]?.scorecard,
-        swot: { ...localData[firm]?.scorecard?.swot, [field]: value }
-      }
+    const newScorecard = {
+      ...localData[firm]?.scorecard,
+      swot: { ...localData[firm]?.scorecard?.swot, [field]: value }
     };
-    setLocalData(prev => ({ ...prev, [firm]: updatedFirmData }));
+    setLocalData(prev => ({ ...prev, [firm]: { ...prev[firm], scorecard: newScorecard } }));
     clearTimeout(debounceTimers.current[`${firm}-swot-${field}`]);
     debounceTimers.current[`${firm}-swot-${field}`] = setTimeout(async () => {
       try {
         await fetch('/api/save-competitor', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: firm, ...updatedFirmData })
+          body: JSON.stringify({ name: firm, scorecard: newScorecard })
         });
       } catch (err) {
         console.error('Failed to save SWOT:', err);
@@ -189,12 +181,11 @@ const updateNotes = async (firm, catId, value) => {
 
   const saveGeneralNotes = async (firm) => {
     setNotesSaveStatus("saving");
-    const updatedFirmData = { ...localData[firm] };
     try {
       await fetch('/api/save-competitor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: firm, ...updatedFirmData })
+        body: JSON.stringify({ name: firm, generalNotes: localData[firm]?.generalNotes || "" })
       });
       setNotesSaveStatus("saved");
       setTimeout(() => setNotesSaveStatus(""), 2500);
@@ -234,7 +225,7 @@ const updateNotes = async (firm, catId, value) => {
       await fetch('/api/save-competitor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: targetFirm, ...updatedFirmData })
+        body: JSON.stringify({ name: targetFirm, scorecard: { scores, notes, swot } })
       }).catch(err => console.error(`Failed to save ${targetFirm}:`, err));
     } catch (e) {
       setImportError("Invalid JSON: " + e.message);
