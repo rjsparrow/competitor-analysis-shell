@@ -713,7 +713,7 @@ const deleteFirm = (id) => {
               <button onClick={()=>setTrayOpen(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:M}}>×</button>
             </div>
             <input type="text" placeholder="Search..." value={search} onChange={e=>setSearch(e.target.value)} style={{...inputSt,marginBottom:16}}/>
-            {PEER_GROUPS.map(group=>{
+            {Object.keys(grouped).map(group=>{
               const inGroup = (grouped[group]||[]).filter(f=>!search||f.name.toLowerCase().includes(search.toLowerCase()));
               if(!inGroup.length) return null;
               return <div key={group} style={{marginBottom:16}}>
