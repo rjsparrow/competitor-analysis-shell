@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 
 const PEER_GROUPS = ["Healthcare (Large)", "Healthcare (Small)", "Senior Living", "Peer Group"];
@@ -520,14 +520,39 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
   const [importFirm, setImportFirm] = useState("");
   const [importError, setImportError] = useState("");
 
+  // 4. General notes (shared across all tools)
+  const [localGeneralNotes, setLocalGeneralNotes] = useState("");
+  const notesDebounce = useRef({});
+
   // Load firm data into local state when selection changes
   useEffect(() => {
     if (selectedFirmName && competitors[selectedFirmName]) {
       setLocalCe(competitors[selectedFirmName].contentEngine || emptyContentEngine());
+      setLocalGeneralNotes(competitors[selectedFirmName].generalNotes || "");
     } else {
       setLocalCe(null);
+      setLocalGeneralNotes("");
     }
   }, [selectedFirmName]);
+
+  const handleGeneralNotesChange = (value) => {
+    setLocalGeneralNotes(value);
+    clearTimeout(notesDebounce.current.timer);
+    notesDebounce.current.timer = setTimeout(async () => {
+      if (!selectedFirmName) return;
+      try {
+        await fetch("/api/save-competitor", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: selectedFirmName, generalNotes: value }),
+        });
+        const firm = competitors[selectedFirmName] || {};
+        onUpdateCompetitor?.(selectedFirmName, { ...firm, generalNotes: value });
+      } catch (err) {
+        console.error("Failed to save notes:", err);
+      }
+    }, 600);
+  };
 
   // Debounced auto-save — fires 800ms after last change
   useEffect(() => {
@@ -650,7 +675,7 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
               <button onClick={() => setTrayOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: MUTED }}>×</button>
             </div>
             <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, marginBottom: 16 }} />
-            {PEER_GROUPS.map(group => {
+            {Object.keys(grouped).map(group => {
               const inGroup = (grouped[group] || []).filter(f => !search || f.name.toLowerCase().includes(search.toLowerCase()));
               if (!inGroup.length) return null;
               return (
@@ -755,6 +780,16 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
                     {currentFirmMeta?.url && <a href={currentFirmMeta.url.startsWith("http")?currentFirmMeta.url:"https://"+currentFirmMeta.url} target="_blank" rel="noreferrer" style={{ ...sans(), fontSize:12, color:ACCENT_WARM, textDecoration:"none" }}>{currentFirmMeta.url} ↗</a>}
                     <div style={{ ...mono(), fontSize:10, textTransform:"uppercase", letterSpacing:1.5, color:MUTED, marginTop:6 }}>{currentFirmMeta?.peerGroup}</div>
                   </div>
+                </div>
+
+                <div style={{ ...cardStyle, padding:"16px 20px", borderLeft: "3px solid "+ACCENT_WARM }}>
+                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, textTransform:"uppercase", letterSpacing:2, color:ACCENT_WARM, marginBottom:8 }}>Notes</div>
+                  <textarea
+                    value={localGeneralNotes}
+                    onChange={e => handleGeneralNotesChange(e.target.value)}
+                    placeholder="Things to flag, follow up on, or highlight across tools…"
+                    style={{ ...inputStyle, minHeight:72, resize:"vertical", background:"#fdfcfb" }}
+                  />
                 </div>
 
                 <div style={{ ...cardAltStyle, padding:"16px 20px" }}>
