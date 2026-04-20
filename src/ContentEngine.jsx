@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 
 const PEER_GROUPS = ["Healthcare (Large)", "Healthcare (Small)", "Senior Living", "Peer Group"];
@@ -522,7 +522,7 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
 
   // 4. General notes (shared across all tools)
   const [localGeneralNotes, setLocalGeneralNotes] = useState("");
-  const notesDebounce = useRef({});
+  const [notesSaveStatus, setNotesSaveStatus] = useState("");
 
   // Load firm data into local state when selection changes
   useEffect(() => {
@@ -535,23 +535,23 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
     }
   }, [selectedFirmName]);
 
-  const handleGeneralNotesChange = (value) => {
-    setLocalGeneralNotes(value);
-    clearTimeout(notesDebounce.current.timer);
-    notesDebounce.current.timer = setTimeout(async () => {
-      if (!selectedFirmName) return;
-      try {
-        await fetch("/api/save-competitor", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: selectedFirmName, generalNotes: value }),
-        });
-        const firm = competitors[selectedFirmName] || {};
-        onUpdateCompetitor?.(selectedFirmName, { ...firm, generalNotes: value });
-      } catch (err) {
-        console.error("Failed to save notes:", err);
-      }
-    }, 600);
+  const saveGeneralNotes = async () => {
+    if (!selectedFirmName) return;
+    setNotesSaveStatus("saving");
+    try {
+      await fetch("/api/save-competitor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: selectedFirmName, generalNotes: localGeneralNotes }),
+      });
+      const firm = competitors[selectedFirmName] || {};
+      onUpdateCompetitor?.(selectedFirmName, { ...firm, generalNotes: localGeneralNotes });
+      setNotesSaveStatus("saved");
+      setTimeout(() => setNotesSaveStatus(""), 2500);
+    } catch (err) {
+      console.error("Failed to save notes:", err);
+      setNotesSaveStatus("");
+    }
   };
 
   // Debounced auto-save — fires 800ms after last change
@@ -786,10 +786,20 @@ export default function ContentEngine({ competitors, onBack, onUpdateCompetitor,
                   <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, textTransform:"uppercase", letterSpacing:2, color:ACCENT_WARM, marginBottom:8 }}>Notes</div>
                   <textarea
                     value={localGeneralNotes}
-                    onChange={e => handleGeneralNotesChange(e.target.value)}
+                    onChange={e => setLocalGeneralNotes(e.target.value)}
                     placeholder="Things to flag, follow up on, or highlight across tools…"
                     style={{ ...inputStyle, minHeight:72, resize:"vertical", background:"#fdfcfb" }}
                   />
+                  <div style={{ display:"flex", alignItems:"center", gap:12, marginTop:8 }}>
+                    <button
+                      onClick={saveGeneralNotes}
+                      disabled={notesSaveStatus === "saving"}
+                      style={{ ...sans(), padding:"6px 18px", background:ACCENT_WARM, color:"#fff", border:"none", borderRadius:6, fontSize:13, fontWeight:600, cursor:"pointer" }}
+                    >
+                      {notesSaveStatus === "saving" ? "Saving…" : "Save Notes"}
+                    </button>
+                    {notesSaveStatus === "saved" && <span style={{ ...sans(), fontSize:12, color:"#2d6a4f" }}>✓ Saved</span>}
+                  </div>
                 </div>
 
                 <div style={{ ...cardAltStyle, padding:"16px 20px" }}>
