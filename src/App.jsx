@@ -238,32 +238,32 @@ function HomePage({ onNavigate, competitors, firmList }) {
   return (
     <div style={{ background: "#111110", minHeight: "100vh" }}>
       {/* Top bar */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 28px 0" }}>
-        <span style={{ fontSize: 11, letterSpacing: "0.15em", color: "#9a9489", fontWeight: 500, textTransform: "uppercase", fontFamily: "'DM Mono', monospace" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "32px 56px 0" }}>
+        <span style={{ fontSize: 22, letterSpacing: "0.15em", color: "#9a9489", fontWeight: 500, textTransform: "uppercase", fontFamily: "'DM Mono', monospace" }}>
           Midwest Architecture
         </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{
-            width: 34, height: 34, borderRadius: "50%", border: "1px solid #2e2d2a",
+            width: 48, height: 48, borderRadius: "50%", border: "1px solid #2e2d2a",
             display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", color: "#9a9489", fontSize: 16
+            cursor: "pointer", color: "#9a9489", fontSize: 22
           }}>🔔</div>
           <div style={{
-            width: 34, height: 34, borderRadius: "50%", border: "2px solid #C9922A",
+            width: 48, height: 48, borderRadius: "50%", border: "2px solid #C9922A",
             background: "#1e1c18", display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 11, fontWeight: 500, color: "#C9922A", letterSpacing: "0.05em",
+            fontSize: 16, fontWeight: 500, color: "#C9922A", letterSpacing: "0.05em",
             fontFamily: "'DM Mono', monospace"
           }}>MA</div>
         </div>
       </div>
 
       {/* Hero */}
-      <div style={{ padding: "28px 28px 20px" }}>
-        <div style={{ width: 32, height: 2, background: "#C9922A", marginBottom: 16, borderRadius: 1 }} />
-        <h1 style={{ fontSize: 40, fontWeight: 500, color: "#f0ede6", margin: "0 0 8px", lineHeight: 1.1, fontFamily: "'DM Sans', sans-serif" }}>
+      <div style={{ padding: "40px 56px 28px" }}>
+        <div style={{ width: 48, height: 3, background: "#C9922A", marginBottom: 20, borderRadius: 1 }} />
+        <h1 style={{ fontSize: 64, fontWeight: 500, color: "#f0ede6", margin: "0 0 14px", lineHeight: 1.1, fontFamily: "'DM Sans', sans-serif" }}>
           Competitor Intelligence
         </h1>
-        <p style={{ fontSize: 13, color: "#7a7670", margin: 0, maxWidth: 420, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 20, color: "#7a7670", margin: 0, maxWidth: 560, lineHeight: 1.5 }}>
           Strategic analysis of positioning, digital presence, and content leadership across Midwest architecture firms.
         </p>
       </div>
@@ -271,48 +271,48 @@ function HomePage({ onNavigate, competitors, firmList }) {
       {/* Stats row */}
       <div style={{
         display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
-        gap: 1, background: "#1e1c18", margin: "0 28px", borderRadius: 10, overflow: "hidden"
+        gap: 1, background: "#1e1c18", margin: "0 56px", borderRadius: 12, overflow: "hidden"
       }}>
         {stats.map((s) => (
-          <div key={s.label} style={{ background: "#161512", padding: "16px 18px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 18 }}>{s.icon}</span>
-              <span style={{ fontSize: 28, fontWeight: 500, color: "#f0ede6", lineHeight: 1 }}>{s.num}</span>
+          <div key={s.label} style={{ background: "#161512", padding: "24px 28px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+              <span style={{ fontSize: 28 }}>{s.icon}</span>
+              <span style={{ fontSize: 44, fontWeight: 500, color: "#f0ede6", lineHeight: 1 }}>{s.num}</span>
             </div>
-            <div style={{ fontSize: 11, color: "#6a6660" }}>{s.label}</div>
+            <div style={{ fontSize: 18, color: "#6a6660" }}>{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Module cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, padding: "20px 28px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, padding: "28px 56px" }}>
         {modules.map((m) => (
           <button
             key={m.id}
             onClick={() => onNavigate(m.id)}
             style={{
-              background: "#161512", border: "1px solid #252320", borderRadius: 12,
-              padding: 22, position: "relative", overflow: "hidden", minHeight: 160,
+              background: "#161512", border: "1px solid #252320", borderRadius: 14,
+              padding: 32, position: "relative", overflow: "hidden", minHeight: 220,
               cursor: "pointer", textAlign: "left", transition: "border-color 0.15s",
               display: "block", width: "100%"
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = "#C9922A"}
             onMouseLeave={e => e.currentTarget.style.borderColor = "#252320"}
           >
-            <div style={{ fontSize: 11, color: "#C9922A", fontWeight: 500, letterSpacing: "0.1em", marginBottom: 10, fontFamily: "'DM Mono', monospace" }}>
+            <div style={{ fontSize: 18, color: "#C9922A", fontWeight: 500, letterSpacing: "0.1em", marginBottom: 14, fontFamily: "'DM Mono', monospace" }}>
               {m.num}
             </div>
-            <div style={{ fontSize: 16, fontWeight: 500, color: "#f0ede6", marginBottom: 6, fontFamily: "'DM Sans', sans-serif" }}>
+            <div style={{ fontSize: 26, fontWeight: 500, color: "#f0ede6", marginBottom: 10, fontFamily: "'DM Sans', sans-serif" }}>
               {m.title}
             </div>
-            <div style={{ fontSize: 12, color: "#6a6660", lineHeight: 1.5, maxWidth: 200 }}>
+            <div style={{ fontSize: 18, color: "#6a6660", lineHeight: 1.5, maxWidth: 260 }}>
               {m.desc}
             </div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 14, fontSize: 12, color: "#C9922A" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 20, fontSize: 18, color: "#C9922A" }}>
               {m.link} →
             </div>
             {/* Accent graphic */}
-            <div style={{ position: "absolute", right: 18, top: "50%", transform: "translateY(-50%)" }}>
+            <div style={{ position: "absolute", right: 28, top: "50%", transform: "translateY(-50%)" }}>
               {m.accent}
             </div>
           </button>
@@ -320,36 +320,36 @@ function HomePage({ onNavigate, competitors, firmList }) {
       </div>
 
       {/* Bottom row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, padding: "0 28px 28px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, padding: "0 56px 56px" }}>
         {/* Recent activity */}
-        <div style={{ background: "#161512", border: "1px solid #252320", borderRadius: 12, padding: 20 }}>
-          <div style={{ fontSize: 12, color: "#7a7670", marginBottom: 14, fontWeight: 500 }}>Recent Activity</div>
+        <div style={{ background: "#161512", border: "1px solid #252320", borderRadius: 14, padding: 28 }}>
+          <div style={{ fontSize: 18, color: "#7a7670", marginBottom: 18, fontWeight: 500 }}>Recent Activity</div>
           {recentFirms.length > 0 ? recentFirms.map((f) => (
-            <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #1e1c18" }}>
-              <div style={{ width: 28, height: 28, background: "#1e1c18", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 12 }}>🏛</div>
-              <span style={{ fontSize: 12, color: "#c8c4bc", fontWeight: 500, minWidth: 130 }}>{f.name}</span>
-              <span style={{ fontSize: 11, color: "#5a5650", flex: 1 }}>Data imported</span>
-              <span style={{ fontSize: 11, color: "#4a4840" }}>{formatTimeAgo(f.importedAt)}</span>
+            <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: "1px solid #1e1c18" }}>
+              <div style={{ width: 36, height: 36, background: "#1e1c18", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 16 }}>🏛</div>
+              <span style={{ fontSize: 18, color: "#c8c4bc", fontWeight: 500, minWidth: 160 }}>{f.name}</span>
+              <span style={{ fontSize: 16, color: "#5a5650", flex: 1 }}>Data imported</span>
+              <span style={{ fontSize: 16, color: "#4a4840" }}>{formatTimeAgo(f.importedAt)}</span>
             </div>
           )) : (
-            <div style={{ fontSize: 12, color: "#4a4840", fontStyle: "italic" }}>No firms imported yet — add your first competitor above.</div>
+            <div style={{ fontSize: 18, color: "#4a4840", fontStyle: "italic" }}>No firms imported yet — add your first competitor above.</div>
           )}
           <div
             onClick={() => onNavigate("scorecard")}
-            style={{ fontSize: 12, color: "#C9922A", display: "inline-flex", alignItems: "center", gap: 4, marginTop: 12, cursor: "pointer" }}
+            style={{ fontSize: 18, color: "#C9922A", display: "inline-flex", alignItems: "center", gap: 6, marginTop: 18, cursor: "pointer" }}
           >
             View all firms →
           </div>
         </div>
 
         {/* Insight card */}
-        <div style={{ background: "#161512", border: "1px solid #252320", borderRadius: 12, padding: 20 }}>
-          <div style={{ fontSize: 11, color: "#C9922A", marginBottom: 8, fontWeight: 500 }}>Top Insight This Week</div>
-          <div style={{ fontSize: 20, fontWeight: 500, color: "#f0ede6", lineHeight: 1.3, marginBottom: 12 }}>
+        <div style={{ background: "#161512", border: "1px solid #252320", borderRadius: 14, padding: 28 }}>
+          <div style={{ fontSize: 18, color: "#C9922A", marginBottom: 12, fontWeight: 500 }}>Top Insight This Week</div>
+          <div style={{ fontSize: 28, fontWeight: 500, color: "#f0ede6", lineHeight: 1.3, marginBottom: 16 }}>
             Thought leadership is the largest gap across all firms.
           </div>
-          <div style={{ fontSize: 44, fontWeight: 500, color: "#C9922A", lineHeight: 1 }}>68%</div>
-          <div style={{ fontSize: 12, color: "#6a6660", marginTop: 6, lineHeight: 1.4 }}>
+          <div style={{ fontSize: 72, fontWeight: 500, color: "#C9922A", lineHeight: 1 }}>68%</div>
+          <div style={{ fontSize: 18, color: "#6a6660", marginTop: 10, lineHeight: 1.4 }}>
             of firms publish thought leadership content sporadically or not at all.
           </div>
         </div>
